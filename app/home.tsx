@@ -17,7 +17,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 
 // ✅ FIXED: আলাদা import নেই — সরাসরি fetch ব্যবহার
-const API_URL = 'https://liora-backend-production-74f1.up.railway.app-production-74f1.up.railway.appliora-backend-production-74f1.up.railway.app/api';
+const API_URL = 'https://liora-backend-production-74f1.up.railway.app';
 
 const { width } = Dimensions.get('window');
 

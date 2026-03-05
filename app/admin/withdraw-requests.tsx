@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 
-const API_URL = 'https://liora-backend-production-74f1.up.railway.app-production-74f1.up.railway.appliora-backend-production-74f1.up.railway.app/api/withdraw';
+const API_URL = 'https://liora-backend-production-74f1.up.railway.app';
 
 const STATUS_COLOR: any = {
   Pending:  { bg: '#FFF8E1', text: '#F59E0B', label: 'Pending' },
