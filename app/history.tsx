@@ -15,7 +15,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 
 // ✅ সরাসরি fetch — api.js import নেই
-const API_URL = 'liora-backend-production-74f1.up.railway.appliora-backend-production-74f1.up.railway.app/api';
+const API_URL = 'https://liora-backend-production-74f1.up.railway.app-production-74f1.up.railway.appliora-backend-production-74f1.up.railway.app/api';
 
 const TYPE_CONFIG: any = {
   withdraw: { icon: 'arrow-up-circle-outline',   color: '#E17055', label: 'উইথড্র'      },
