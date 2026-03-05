@@ -1,4 +1,4 @@
-const API_URL = 'https://liora-backend-production-74f1.up.railway.app';
+const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
 // ============================================================
 // ✅ রেজিস্ট্রেশন
 // ============================================================
