@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 
-const API_URL = 'https://liora-backend-production-74f1.up.railway.app';
+const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
 
 const STATUS_COLOR: any = {
   Pending:  { bg: '#FFF8E1', text: '#F59E0B', label: 'Pending' },
