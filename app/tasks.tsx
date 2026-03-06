@@ -14,20 +14,64 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { doTask } from '../services/api';
 
-const PARTNER_APPS = [
-  { id: '1',  name: 'App Task 01', link: 'https://www.appbrain.com/app/grow-your-island-idle-game/com.LevelSolutions.buildisland' },
-  { id: '2',  name: 'App Task 02', link: ' https://www.appbrain.com/app/wifi-assistant-launcher/com.assistant.manage.viwmip' },
-  { id: '3',  name: 'App Task 03', link: 'https://www.appbrain.com/app/accucharge-battery-speed-aod/com.androxify.batteryflow.charge.speed.aod' },
-  { id: '4',  name: 'App Task 04', link: 'https://www.appbrain.com/app/home-front-command/com.alert.meserhadash' },
-  { id: '5',  name: 'App Task 05', link: '. https://www.appbrain.com/app/pocketpal-ai/com.pocketpalai' },
-  { id: '6',  name: 'App Task 06', link: ' https://www.appbrain.com/app/vehicle-ar-drive/com.kishor.VehicleAr' },
-  { id: '7',  name: 'App Task 07', link: 'https://www.appbrain.com/app/beatron-ai-music-maker/com.beatmaker.aimusic' },
-  { id: '8',  name: 'App Task 08', link: 'https://www.appbrain.com/app/galaxy-buds/com.samsung.accessory.budsunitemgr' },
-  { id: '9',  name: 'App Task 09', link: 'https://www.appbrain.com/app/calendar/com.oplus.calendar' },
-  { id: '10', name: 'App Task 10', link: ' https://www.appbrain.com/app/last-survivor-survival-pro/com.gemjam.last.survivor.zombie.survival.games.apocalypse.rpg.open.world.adventure.action.shooting.pro' },
-  { id: '11', name: 'App Task 11', link: ' https://www.appbrain.com/app/find-awesome-games/com.appspot.swisscodemonkeys.hotgames' },
-  { id: '12', name: 'App Task 12', link: 'https://www.appbrain.com/app/blob-connect-match-game/com.apptornado.dotmatch' },
+// ✅ ৩ দিনের App Pool — আপনি নিজে লিংক বসান
+const ALL_APPS: { id: string; name: string; link: string }[][] = [
+  // ===== DAY 1 (১ম দিন) =====
+  [
+    { id: '1',  name: 'App Task 01', link: 'https://www.appbrain.com/app/grow-your-island-idle-game/com.LevelSolutions.buildisland' },
+    { id: '2',  name: 'App Task 02', link: 'https://www.appbrain.com/app/wifi-assistant-launcher/com.assistant.manage.viwmip' },
+    { id: '3',  name: 'App Task 03', link: 'https://www.appbrain.com/app/accucharge-battery-speed-aod/com.androxify.batteryflow.charge.speed.aod' },
+    { id: '4',  name: 'App Task 04', link: 'https://www.appbrain.com/app/home-front-command/com.alert.meserhadash' },
+    { id: '5',  name: 'App Task 05', link: 'https://www.appbrain.com/app/pocketpal-ai/com.pocketpalai' },
+    { id: '6',  name: 'App Task 06', link: 'https://www.appbrain.com/app/vehicle-ar-drive/com.kishor.VehicleAr' },
+    { id: '7',  name: 'App Task 07', link: 'https://www.appbrain.com/app/beatron-ai-music-maker/com.beatmaker.aimusic' },
+    { id: '8',  name: 'App Task 08', link: 'https://www.appbrain.com/app/galaxy-buds/com.samsung.accessory.budsunitemgr' },
+    { id: '9',  name: 'App Task 09', link: 'https://www.appbrain.com/app/calendar/com.oplus.calendar' },
+    { id: '10', name: 'App Task 10', link: 'https://www.appbrain.com/app/last-survivor-survival-pro/com.gemjam.last.survivor.zombie.survival.games.apocalypse.rpg.open.world.adventure.action.shooting.pro' },
+    { id: '11', name: 'App Task 11', link: 'https://www.appbrain.com/app/find-awesome-games/com.appspot.swisscodemonkeys.hotgames' },
+    { id: '12', name: 'App Task 12', link: 'https://www.appbrain.com/app/blob-connect-match-game/com.apptornado.dotmatch' },
+  ],
+
+  // ===== DAY 2 (২য় দিন) =====
+  [
+    { id: '1',  name: 'App Task 01', link: 'https://www.appbrain.com/app/cleaning-toolbox-launcher/com.cleaning.toolbox.bitapiper' },
+    { id: '2',  name: 'App Task 02', link: 'https://www.appbrain.com/app/animal-transport-truck-game-3d/com.city.zoo.animals.transportter.truck.games' },
+    { id: '3',  name: 'App Task 03', link: ' https://www.appbrain.com/app/zen-color-color-by-number/com.oakever.zencolor' },
+    { id: '4',  name: 'App Task 04', link: 'https://www.appbrain.com/app/mahjong-game-match-puzzle/com.match.mahjong.puzzlegame' },
+    { id: '5',  name: 'App Task 05', link: 'https://www.appbrain.com/app/kasso-gaiden-efts/com.tbs.KASSOGAIDEN' },
+    { id: '6',  name: 'App Task 06', link: 'https://www.appbrain.com/app/duck-blast-launcher/com.herofightinggames.duck.blast' },
+    { id: '7',  name: 'App Task 07', link: 'https://www.appbrain.com/app/dreamgirl-ai-companion/com.ai.chat.dreamgirl.virtual.companion' },
+    { id: '8',  name: 'App Task 08', link: 'https://www.appbrain.com/app/myshort-short-drama-tv/com.myshort.dramashort' },
+    { id: '9',  name: 'App Task 09', link: 'https://www.appbrain.com/app/charmflow-ai-video-maker/zim.nova.charmflowaivideomaker' },
+    { id: '10', name: 'App Task 10', link: 'https://www.appbrain.com/app/lyra-music-radio-podcasts/com.musicapp.lyra' },
+    { id: '11', name: 'App Task 11', link: 'https://www.appbrain.com/app/asmr-mukbang-antistress-game/com.antistress.asmr.mukbang' },
+    { id: '12', name: 'App Task 12', link: 'https://www.appbrain.com/app/vidglow-ai-video-creator/com.vidglow.beauty' },
+  ],
+
+  // ===== DAY 3 (৩য় দিন) =====
+  [
+    { id: '1',  name: 'App Task 01', link: 'https://www.appbrain.com/app/z-route-redemption/com.zroute.global' },
+    { id: '2',  name: 'App Task 02', link: 'https://www.appbrain.com/app/berys-prison-run-escape/com.escape.logs.fun.memerot.game' },
+    { id: '3',  name: 'App Task 03', link: 'https://www.appbrain.com/app/superhero-vr-shoot-fight-3d/com.superhero.vr.shoot.fight3d.game' },
+    { id: '4',  name: 'App Task 04', link: 'https://www.appbrain.com/app/craft-party-open-world-rp/com.grand.block.city.world.mafia.crime.games' },
+    { id: '5',  name: 'App Task 05', link: 'https://www.appbrain.com/app/choo-choo-spider-train-game/com.horror.spider.train.adventure' },
+    { id: '6',  name: 'App Task 06', link: 'https://www.appbrain.com/app/jeep-driving-4x4-suv-games-3d/com.vcy.racing.offthe.road.si' },
+    { id: '7',  name: 'App Task 07', link: 'https://www.appbrain.com/app/spider-superhero-action-game/com.GL.spider.superhero.fighting.game' },
+    { id: '8',  name: 'App Task 08', link: 'https://www.appbrain.com/app/horror-monster-train-escape-3d/com.napolitanodevco.horrormonstertrainescape' },
+    { id: '9',  name: 'App Task 09', link: 'https://www.appbrain.com/app/goo-goo-gaga-scary-factory/com.BekoCanGames.GooGooGagaScaryFactory' },
+    { id: '10', name: 'App Task 10', link: 'https://www.appbrain.com/app/scary-nights-plush-toy-market/com.mindstormgames.horror.puzzle.toy.factory' },
+    { id: '11', name: 'App Task 11', link: 'https://www.appbrain.com/app/find-monster-challenge/com.xgame.rainbow.friends.challenge' },
+    { id: '12', name: 'App Task 12', link: 'https://www.appbrain.com/app/monster-puzzle-adventure/huggy.puzzle.logic' },
+  ],
 ];
+
+// ✅ প্রতিদিন তারিখ অনুযায়ী আলাদা ১২টি app দেখাবে
+const getDailyApps = () => {
+  const dayIndex = Math.floor(Date.now() / 86400000) % 3;
+  return ALL_APPS[dayIndex];
+};
+
+const PARTNER_APPS = getDailyApps();
 
 const PACKAGE_LIMIT: Record<string, number> = {
   Bronze: 4, Silver: 6, Gold: 8, Platinum: 10, Diamond: 12,
@@ -43,7 +87,6 @@ export default function TaskScreen() {
   const timerRef   = useRef<any>(null);
   const claimedRef = useRef(false);
 
-  // ✅ FIXED: pkgName সঠিকভাবে বের করা
   const rawPkg  = (userData?.packageName && userData?.packageName !== 'None')
     ? userData.packageName
     : (userData?.package || '');
@@ -51,7 +94,6 @@ export default function TaskScreen() {
     ? rawPkg.charAt(0).toUpperCase() + rawPkg.slice(1).toLowerCase()
     : 'Bronze';
 
-  // ✅ FIXED: limit সঠিক package থেকে নেওয়া
   const limit   = PACKAGE_LIMIT[pkgName] || 4;
 
   const today      = new Date().toISOString().split('T')[0];
