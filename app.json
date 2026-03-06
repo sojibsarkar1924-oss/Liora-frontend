@@ -17,7 +17,15 @@
       },
       "package": "com.sojibbackendadmin1.Liora"
     },
-    "plugins": ["expo-router"],
-    "scheme": "liora"
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "liora",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1d2f3254-5c23-42c0-8c21-f000a051b804"
+      }
+    }
   }
 }
