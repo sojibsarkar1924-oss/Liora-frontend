@@ -35,7 +35,7 @@ export default function DepositScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   // অ্যাডমিন নাম্বার (যেখানে টাকা পাঠাবে)
-  const adminNumber = "01700000000"; 
+  const adminNumber = "01812323466"; 
 
   const handleDeposit = () => {
     if (!amount || !trxId) {
