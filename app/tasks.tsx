@@ -14,9 +14,8 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { doTask } from '../services/api';
 
-// ✅ ৩ দিনের App Pool — আপনি নিজে লিংক বসান
 const ALL_APPS: { id: string; name: string; link: string }[][] = [
-  // ===== DAY 1 (১ম দিন) =====
+  // ===== DAY 1 — এখানে ১২টি নতুন লিংক বসান =====
   [
     { id: '1',  name: 'App Task 01', link: 'https://www.appbrain.com/app/grow-your-island-idle-game/com.LevelSolutions.buildisland' },
     { id: '2',  name: 'App Task 02', link: 'https://www.appbrain.com/app/wifi-assistant-launcher/com.assistant.manage.viwmip' },
@@ -32,11 +31,11 @@ const ALL_APPS: { id: string; name: string; link: string }[][] = [
     { id: '12', name: 'App Task 12', link: 'https://www.appbrain.com/app/blob-connect-match-game/com.apptornado.dotmatch' },
   ],
 
-  // ===== DAY 2 (২য় দিন) =====
+  // ===== DAY 2 =====
   [
     { id: '1',  name: 'App Task 01', link: 'https://www.appbrain.com/app/cleaning-toolbox-launcher/com.cleaning.toolbox.bitapiper' },
     { id: '2',  name: 'App Task 02', link: 'https://www.appbrain.com/app/animal-transport-truck-game-3d/com.city.zoo.animals.transportter.truck.games' },
-    { id: '3',  name: 'App Task 03', link: ' https://www.appbrain.com/app/zen-color-color-by-number/com.oakever.zencolor' },
+    { id: '3',  name: 'App Task 03', link: 'https://www.appbrain.com/app/zen-color-color-by-number/com.oakever.zencolor' },
     { id: '4',  name: 'App Task 04', link: 'https://www.appbrain.com/app/mahjong-game-match-puzzle/com.match.mahjong.puzzlegame' },
     { id: '5',  name: 'App Task 05', link: 'https://www.appbrain.com/app/kasso-gaiden-efts/com.tbs.KASSOGAIDEN' },
     { id: '6',  name: 'App Task 06', link: 'https://www.appbrain.com/app/duck-blast-launcher/com.herofightinggames.duck.blast' },
@@ -48,7 +47,7 @@ const ALL_APPS: { id: string; name: string; link: string }[][] = [
     { id: '12', name: 'App Task 12', link: 'https://www.appbrain.com/app/vidglow-ai-video-creator/com.vidglow.beauty' },
   ],
 
-  // ===== DAY 3 (৩য় দিন) =====
+  // ===== DAY 3 =====
   [
     { id: '1',  name: 'App Task 01', link: 'https://www.appbrain.com/app/z-route-redemption/com.zroute.global' },
     { id: '2',  name: 'App Task 02', link: 'https://www.appbrain.com/app/berys-prison-run-escape/com.escape.logs.fun.memerot.game' },
@@ -65,20 +64,15 @@ const ALL_APPS: { id: string; name: string; link: string }[][] = [
   ],
 ];
 
-// ✅ প্রতিদিন তারিখ অনুযায়ী আলাদা ১২টি app দেখাবে
-const getDailyApps = () => {
-  const dayIndex = Math.floor(Date.now() / 86400000) % 3;
-  return ALL_APPS[dayIndex];
-};
-
-const PARTNER_APPS = getDailyApps();
-
 const PACKAGE_LIMIT: Record<string, number> = {
   Bronze: 4, Silver: 6, Gold: 8, Platinum: 10, Diamond: 12,
 };
 
 export default function TaskScreen() {
   const { userData, updateUserData } = useContext(AuthContext) as any;
+
+  // ✅ FIX: component এর ভেতরে রাখা হয়েছে — cache হবে না
+  const PARTNER_APPS = ALL_APPS[Math.floor(Date.now() / 86400000) % 3];
 
   const [timer,       setTimer]       = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
