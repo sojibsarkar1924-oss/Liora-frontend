@@ -15,18 +15,18 @@ import { AuthContext } from '../context/AuthContext';
 import { doTask } from '../services/api';
 
 const PARTNER_APPS = [
-  { id: '1',  name: 'App Task 01', link: 'https://play.google.com/store/apps/details?id=com.whatsapp' },
-  { id: '2',  name: 'App Task 02', link: 'https://play.google.com/store/apps/details?id=com.facebook.katana' },
-  { id: '3',  name: 'App Task 03', link: 'https://play.google.com/store/apps/details?id=com.instagram.android' },
-  { id: '4',  name: 'App Task 04', link: 'https://play.google.com/store/apps/details?id=com.tiktok.android' },
-  { id: '5',  name: 'App Task 05', link: 'https://play.google.com/store/apps/details?id=com.snapchat.android' },
-  { id: '6',  name: 'App Task 06', link: 'https://play.google.com/store/apps/details?id=com.twitter.android' },
-  { id: '7',  name: 'App Task 07', link: 'https://play.google.com/store/apps/details?id=com.youtube.android' },
-  { id: '8',  name: 'App Task 08', link: 'https://play.google.com/store/apps/details?id=com.telegram.messenger' },
-  { id: '9',  name: 'App Task 09', link: 'https://play.google.com/store/apps/details?id=com.viber.voip' },
-  { id: '10', name: 'App Task 10', link: 'https://play.google.com/store/apps/details?id=com.imo.android.imoim' },
-  { id: '11', name: 'App Task 11', link: 'https://play.google.com/store/apps/details?id=com.bigo.live' },
-  { id: '12', name: 'App Task 12', link: 'https://play.google.com/store/apps/details?id=com.gaana' },
+  { id: '1',  name: 'App Task 01', link: 'https://www.appbrain.com/app/grow-your-island-idle-game/com.LevelSolutions.buildisland' },
+  { id: '2',  name: 'App Task 02', link: ' https://www.appbrain.com/app/wifi-assistant-launcher/com.assistant.manage.viwmip' },
+  { id: '3',  name: 'App Task 03', link: 'https://www.appbrain.com/app/accucharge-battery-speed-aod/com.androxify.batteryflow.charge.speed.aod' },
+  { id: '4',  name: 'App Task 04', link: 'https://www.appbrain.com/app/home-front-command/com.alert.meserhadash' },
+  { id: '5',  name: 'App Task 05', link: '. https://www.appbrain.com/app/pocketpal-ai/com.pocketpalai' },
+  { id: '6',  name: 'App Task 06', link: ' https://www.appbrain.com/app/vehicle-ar-drive/com.kishor.VehicleAr' },
+  { id: '7',  name: 'App Task 07', link: 'https://www.appbrain.com/app/beatron-ai-music-maker/com.beatmaker.aimusic' },
+  { id: '8',  name: 'App Task 08', link: 'https://www.appbrain.com/app/galaxy-buds/com.samsung.accessory.budsunitemgr' },
+  { id: '9',  name: 'App Task 09', link: 'https://www.appbrain.com/app/calendar/com.oplus.calendar' },
+  { id: '10', name: 'App Task 10', link: ' https://www.appbrain.com/app/last-survivor-survival-pro/com.gemjam.last.survivor.zombie.survival.games.apocalypse.rpg.open.world.adventure.action.shooting.pro' },
+  { id: '11', name: 'App Task 11', link: ' https://www.appbrain.com/app/find-awesome-games/com.appspot.swisscodemonkeys.hotgames' },
+  { id: '12', name: 'App Task 12', link: 'https://www.appbrain.com/app/blob-connect-match-game/com.apptornado.dotmatch' },
 ];
 
 const PACKAGE_LIMIT: Record<string, number> = {
