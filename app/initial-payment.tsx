@@ -5,16 +5,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { submitDeposit } from '../services/api';
@@ -29,7 +29,7 @@ const PACKAGES = [
 ];
 
 // ✅ শুধু বিকাশ মার্চেন্ট
-const BKASH_MERCHANT = '01812323466';
+const BKASH_MERCHANT = '';
 
 export default function InitialPaymentScreen() {
   const router = useRouter();
