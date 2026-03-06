@@ -267,7 +267,7 @@ const HelpModal = ({ visible, onClose }: { visible: boolean; onClose: () => void
         </View>
 
         {[
-          { icon: 'logo-whatsapp', label: 'WhatsApp সাপোর্ট', sub: '+880 1700-000000', color: '#25D366', action: () => Linking.openURL('https://wa.me/8801700000000') },
+          { icon: 'logo-whatsapp', label: 'WhatsApp সাপোর্ট', sub: '+880 1700-000000', color: '#25D366', action: () => Linking.openURL('https://wa.me/8801812323466') },
           { icon: 'mail-outline', label: 'ইমেইল সাপোর্ট', sub: 'support@app.com', color: Colors.blue, action: () => Linking.openURL('mailto:support@app.com') },
           { icon: 'logo-facebook', label: 'Facebook পেজ', sub: 'facebook.com/app', color: '#1877F2', action: () => Linking.openURL('https://facebook.com') },
         ].map((item, i) => (
