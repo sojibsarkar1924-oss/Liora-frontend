@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Linking,
   RefreshControl,
   SafeAreaView,
   StatusBar,
@@ -85,11 +86,28 @@ export default function AdminWithdrawRequests() {
 
   const handleManualApprove = (item: any) => {
     Alert.alert(
-      'Manual Approve',
-      'Manually send ' + item.amount + ' BDT to ' + item.number + ', then confirm.',
+      '💸 পাঠিয়ে দিন',
+     `${item.amount} টাকা পাঠান:\n📱 ${item.method}: ${item.number}`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Confirm', onPress: () => doAction('/admin/manual-approve', item._id) },
+        { text: 'বাতিল', style: 'cancel' },
+        {
+          text: '📲 bKash Merchant খুলুন',
+          onPress: () => {
+            Linking.openURL('market://details?id=com.bkash.merchant').catch(() => {
+              Linking.openURL('https://play.google.com/store/apps/details?id=com.bkash.merchant');
+            });
+            setTimeout(() => {
+              Alert.alert(
+                '✅ Confirm করুন',
+                'টাকা পাঠানো হয়েছে?',
+                [
+                  { text: 'না', style: 'cancel' },
+                  { text: 'হ্যাঁ, Confirm', onPress: () => doAction('/admin/manual-approve', item._id) },
+                ]
+              );
+            }, 4000);
+          },
+        },
       ]
     );
   };
@@ -115,8 +133,6 @@ export default function AdminWithdrawRequests() {
 
     return (
       <View style={styles.card}>
-
-        {/* Header */}
         <View style={styles.cardHeader}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
@@ -134,7 +150,6 @@ export default function AdminWithdrawRequests() {
           </View>
         </View>
 
-        {/* Details */}
         <View style={styles.detailsBox}>
           <View style={styles.detailRow}>
             <Ionicons name="cash-outline" size={16} color="#64748b" />
@@ -172,7 +187,6 @@ export default function AdminWithdrawRequests() {
           ) : null}
         </View>
 
-        {/* Buttons — only for Pending */}
         {item.status === 'Pending' ? (
           isProcessing ? (
             <View style={styles.processingBox}>
@@ -182,7 +196,6 @@ export default function AdminWithdrawRequests() {
           ) : (
             <View>
               <View style={styles.btnRow}>
-                {/* Auto bKash */}
                 <TouchableOpacity
                   style={[styles.btn, { backgroundColor: '#0984E3' }]}
                   onPress={() => handleAutoApprove(item)}
@@ -192,30 +205,27 @@ export default function AdminWithdrawRequests() {
                   <Text style={styles.btnText}>Auto bKash</Text>
                 </TouchableOpacity>
 
-                {/* Manual */}
                 <TouchableOpacity
                   style={[styles.btn, { backgroundColor: '#6C5CE7' }]}
                   onPress={() => handleManualApprove(item)}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="hand-right-outline" size={16} color="white" />
-                  <Text style={styles.btnText}>Manual</Text>
+                  <Text style={styles.btnText}>পাঠিয়ে দেন</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Reject */}
               <TouchableOpacity
                 style={[styles.btnFull, { backgroundColor: '#EF4444', marginTop: 8 }]}
                 onPress={() => handleReject(item)}
                 activeOpacity={0.8}
               >
                 <Ionicons name="close-circle-outline" size={16} color="white" />
-                <Text style={styles.btnText}>Reject (Refund)</Text>
+                <Text style={styles.btnText}>বাতিল (Refund)</Text>
               </TouchableOpacity>
             </View>
           )
         ) : null}
-
       </View>
     );
   };
