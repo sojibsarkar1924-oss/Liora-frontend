@@ -5,27 +5,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { submitDeposit } from '../services/api';
 
 // ✅ প্যাকেজ লিস্ট — signup page এর সাথে মিল
 const PACKAGES = [
-  { id: 'bronze',   name: 'Bronze',   price: 1350,  daily: 45,  tasks: 5,  color: '#CD7F32' },
-  { id: 'silver',   name: 'Silver',   price: 2700,  daily: 90,  tasks: 6,  color: '#94A3B8' },
-  { id: 'gold',     name: 'Gold',     price: 5400,  daily: 180, tasks: 7,  color: '#F59E0B' },
-  { id: 'platinum', name: 'Platinum', price: 10800, daily: 360, tasks: 10, color: '#6366F1' },
-  { id: 'diamond',  name: 'Diamond',  price: 21600, daily: 720, tasks: 12, color: '#06B6D4' },
+  { id: 'bronze',   name: 'Bronze',   price: 1350,  daily: 48,  tasks: 4,  color: '#CD7F32' },
+  { id: 'silver',   name: 'Silver',   price: 2700,  daily: 108, tasks: 6,  color: '#C0C0C0' },
+  { id: 'gold',     name: 'Gold',     price: 5400,  daily: 224, tasks: 8,  color: '#FFD700' },
+  { id: 'platinum', name: 'Platinum', price: 10800, daily: 460, tasks: 10, color: '#E5E4E2' },
+  { id: 'diamond',  name: 'Diamond',  price: 21600, daily: 960, tasks: 12, color: '#B9F2FF' },
 ];
 
 // ✅ শুধু বিকাশ মার্চেন্ট
