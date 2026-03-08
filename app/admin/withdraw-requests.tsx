@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard'; // ✅ FIX: deprecated Clipboard replace
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Clipboard,
   FlatList,
   Linking,
   RefreshControl,
@@ -20,7 +20,7 @@ import {
 const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
 
 const STATUS_COLOR: any = {
-  Pending:  { bg: '#FFF8E1', text: '#F59E0B', label: '⏳ Pending' },
+  Pending:  { bg: '#FFF8E1', text: '#F59E0B', label: '⏳ Pending'  },
   Approved: { bg: '#E8FDF5', text: '#00B894', label: '✅ Approved' },
   Rejected: { bg: '#FFF0EE', text: '#E17055', label: '❌ Rejected' },
 };
@@ -74,59 +74,78 @@ export default function AdminWithdrawRequests() {
     }
   };
 
+  // ✅ Auto bKash API দিয়ে পাঠায়
   const handleAutoApprove = (item: any) => {
     Alert.alert(
-      'Auto bKash',
-      item.amount + ' BDT পাঠাবেন ' + item.number + ' তে?',
+      '⚡ Auto bKash',
+      `${item.amount} BDT পাঠাবেন ${item.number} তে?\n(bKash API দিয়ে স্বয়ংক্রিয়ভাবে পাঠাবে)`,
       [
         { text: 'না', style: 'cancel' },
-        { text: 'হ্যাঁ', onPress: () => doAction('/withdraw/admin/auto-approve', item._id) },
+        { text: 'হ্যাঁ, পাঠান', onPress: () => doAction('/withdraw/admin/auto-approve', item._id) },
       ]
     );
   };
 
+  // ✅ FIX: Manual approve — bKash Merchant খুলবে, confirm করলে status=Approved
+  // টাকা refund হবে না — admin নিজে merchant থেকে পাঠাবেন
   const handleManualApprove = (item: any) => {
     Alert.alert(
-      '💸 পাঠিয়ে দিন',
-      `${item.amount} টাকা পাঠান:\n📱 ${item.method}: ${item.number}`,
+      '💸 ম্যানুয়াল পেমেন্ট',
+      `${item.amount} টাকা পাঠান:\n📱 ${item.method}: ${item.number}\n\nbKash Merchant অ্যাপ খুলে টাকা পাঠান, তারপর Confirm করুন।`,
       [
         { text: 'বাতিল', style: 'cancel' },
         {
           text: '📲 bKash Merchant খুলুন',
           onPress: () => {
+            // bKash Merchant অ্যাপ খোলার চেষ্টা
             Linking.openURL('market://details?id=com.bkash.merchant').catch(() => {
               Linking.openURL('https://play.google.com/store/apps/details?id=com.bkash.merchant');
             });
+
+            // ৫ সেকেন্ড পর confirm নেওয়া
             setTimeout(() => {
               Alert.alert(
-                '✅ Confirm করুন',
-                'টাকা পাঠানো হয়েছে?',
+                '✅ টাকা পাঠানো হয়েছে?',
+                `${item.amount} টাকা ${item.number} তে পাঠানো কি সম্পন্ন হয়েছে?\n\nConfirm করলে user এর withdraw status Approved হবে।`,
                 [
-                  { text: 'না', style: 'cancel' },
-                  { text: 'হ্যাঁ, Confirm', onPress: () => doAction('/withdraw/admin/manual-approve', item._id) },
+                  { text: 'না, এখনো না', style: 'cancel' },
+                  {
+                    text: 'হ্যাঁ, Confirm ✅',
+                    onPress: () => doAction('/withdraw/admin/manual-approve', item._id),
+                  },
                 ]
               );
-            }, 4000);
+            }, 5000);
           },
         },
       ]
     );
   };
 
+  // ✅ Reject — টাকা user এর কাছে ফেরত যাবে
   const handleReject = (item: any) => {
     Alert.alert(
-      '❌ বাতিল করবেন?',
-      item.amount + ' টাকা user এর কাছে ফেরত যাবে।',
+      '❌ রিকোয়েস্ট বাতিল করবেন?',
+      `${item.amount} টাকা user এর ব্যালেন্সে ফেরত যাবে।`,
       [
         { text: 'না', style: 'cancel' },
-        { text: 'বাতিল করুন', style: 'destructive', onPress: () => doAction('/withdraw/admin/reject', item._id) },
+        {
+          text: 'বাতিল করুন',
+          style: 'destructive',
+          onPress: () => doAction('/withdraw/admin/reject', item._id),
+        },
       ]
     );
   };
 
-  const copyNumber = (number: string) => {
-    Clipboard.setString(number);
-    Alert.alert('✅ কপি হয়েছে!', number);
+  // ✅ FIX: expo-clipboard ব্যবহার করা হচ্ছে
+  const copyNumber = async (number: string) => {
+    try {
+      await Clipboard.setStringAsync(number);
+      Alert.alert('✅ কপি হয়েছে!', number);
+    } catch {
+      Alert.alert('Error', 'কপি করতে ব্যর্থ।');
+    }
   };
 
   const RequestCard = ({ item }: any) => {
@@ -135,10 +154,12 @@ export default function AdminWithdrawRequests() {
     const methodColor  = METHOD_COLOR[item.method] || '#333';
     const amountStr    = String(Math.floor(Number(item.amount) || 0));
     const balanceStr   = String(Math.floor(Number(item.userId?.balance ?? item.userId?.wallet ?? 0)));
-    const dateStr      = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-';
+    const dateStr      = item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-';
 
     return (
       <View style={styles.card}>
+
+        {/* ── Card Header ── */}
         <View style={styles.cardHeader}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
@@ -156,11 +177,12 @@ export default function AdminWithdrawRequests() {
           </View>
         </View>
 
+        {/* ── Details ── */}
         <View style={styles.detailsBox}>
           <View style={styles.detailRow}>
             <Ionicons name="cash-outline" size={16} color="#64748b" />
-            <Text style={styles.detailLabel}>Amount</Text>
-            <Text style={styles.detailAmount}>{'BDT ' + amountStr}</Text>
+            <Text style={styles.detailLabel}>পরিমাণ</Text>
+            <Text style={styles.detailAmount}>৳{amountStr}</Text>
           </View>
           <View style={styles.detailRow}>
             <Ionicons name="phone-portrait-outline" size={16} color="#64748b" />
@@ -171,7 +193,7 @@ export default function AdminWithdrawRequests() {
           </View>
           <View style={styles.detailRow}>
             <Ionicons name="call-outline" size={16} color="#64748b" />
-            <Text style={styles.detailLabel}>Number</Text>
+            <Text style={styles.detailLabel}>নম্বর</Text>
             <TouchableOpacity onPress={() => copyNumber(item.number)}>
               <Text style={[styles.detailValue, { color: '#0984E3', textDecorationLine: 'underline' }]}>
                 {item.number} 📋
@@ -180,14 +202,16 @@ export default function AdminWithdrawRequests() {
           </View>
           <View style={styles.detailRow}>
             <Ionicons name="wallet-outline" size={16} color="#64748b" />
-            <Text style={styles.detailLabel}>Balance</Text>
-            <Text style={styles.detailValue}>{'BDT ' + balanceStr}</Text>
+            <Text style={styles.detailLabel}>ব্যালেন্স</Text>
+            <Text style={styles.detailValue}>৳{balanceStr}</Text>
           </View>
           <View style={styles.detailRow}>
             <Ionicons name="time-outline" size={16} color="#64748b" />
-            <Text style={styles.detailLabel}>Date</Text>
+            <Text style={styles.detailLabel}>তারিখ</Text>
             <Text style={styles.detailValue}>{dateStr}</Text>
           </View>
+
+          {/* ✅ Approved হলে TrxID বা Manual note দেখাও */}
           {item.bkashTrxID ? (
             <View style={styles.detailRow}>
               <Ionicons name="checkmark-circle-outline" size={16} color="#00B894" />
@@ -195,8 +219,17 @@ export default function AdminWithdrawRequests() {
               <Text style={[styles.detailValue, { color: '#00B894' }]}>{item.bkashTrxID}</Text>
             </View>
           ) : null}
+
+          {item.manualNote ? (
+            <View style={styles.detailRow}>
+              <Ionicons name="hand-right-outline" size={16} color="#6C5CE7" />
+              <Text style={styles.detailLabel}>Note</Text>
+              <Text style={[styles.detailValue, { color: '#6C5CE7' }]}>{item.manualNote}</Text>
+            </View>
+          ) : null}
         </View>
 
+        {/* ── Action Buttons (শুধু Pending এ দেখাবে) ── */}
         {item.status === 'Pending' ? (
           isProcessing ? (
             <View style={styles.processingBox}>
@@ -205,6 +238,7 @@ export default function AdminWithdrawRequests() {
             </View>
           ) : (
             <View>
+              {/* Auto + Manual বাটন */}
               <View style={styles.btnRow}>
                 <TouchableOpacity
                   style={[styles.btn, { backgroundColor: '#0984E3' }]}
@@ -225,6 +259,7 @@ export default function AdminWithdrawRequests() {
                 </TouchableOpacity>
               </View>
 
+              {/* Reject বাটন */}
               <TouchableOpacity
                 style={[styles.btnFull, { backgroundColor: '#EF4444', marginTop: 8 }]}
                 onPress={() => handleReject(item)}
@@ -236,6 +271,27 @@ export default function AdminWithdrawRequests() {
             </View>
           )
         ) : null}
+
+        {/* ✅ Approved হলে সবুজ success banner দেখাও */}
+        {item.status === 'Approved' ? (
+          <View style={styles.successBanner}>
+            <Ionicons name="checkmark-circle" size={18} color="#00B894" />
+            <Text style={styles.successBannerText}>
+              পেমেন্ট সম্পন্ন হয়েছে ✅
+            </Text>
+          </View>
+        ) : null}
+
+        {/* ✅ Rejected হলে লাল banner দেখাও */}
+        {item.status === 'Rejected' ? (
+          <View style={styles.rejectBanner}>
+            <Ionicons name="close-circle" size={18} color="#E17055" />
+            <Text style={styles.rejectBannerText}>
+              বাতিল — টাকা ফেরত দেওয়া হয়েছে ❌
+            </Text>
+          </View>
+        ) : null}
+
       </View>
     );
   };
@@ -248,19 +304,21 @@ export default function AdminWithdrawRequests() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
 
+      {/* ── Header ── */}
       <LinearGradient colors={['#1e293b', '#334155']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={22} color="white" />
         </TouchableOpacity>
         <View>
           <Text style={styles.headerTitle}>Withdraw Management</Text>
-          <Text style={styles.headerSub}>Total: {requests.length}</Text>
+          <Text style={styles.headerSub}>মোট: {requests.length} টি রিকোয়েস্ট</Text>
         </View>
         <TouchableOpacity onPress={() => fetchRequests()} style={styles.iconBtn}>
           <Ionicons name="refresh-outline" size={22} color="white" />
         </TouchableOpacity>
       </LinearGradient>
 
+      {/* ── Stats ── */}
       <View style={styles.statsRow}>
         {[
           { label: 'Pending',  count: pendingCount,  color: '#F59E0B' },
@@ -274,10 +332,11 @@ export default function AdminWithdrawRequests() {
         ))}
       </View>
 
+      {/* ── List ── */}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#0984E3" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>লোড হচ্ছে...</Text>
         </View>
       ) : (
         <FlatList
@@ -291,7 +350,7 @@ export default function AdminWithdrawRequests() {
           ListEmptyComponent={
             <View style={styles.centered}>
               <Ionicons name="checkmark-done-circle-outline" size={60} color="#00B894" />
-              <Text style={styles.emptyText}>No requests</Text>
+              <Text style={styles.emptyText}>কোনো রিকোয়েস্ট নেই</Text>
             </View>
           }
         />
@@ -304,14 +363,16 @@ const styles = StyleSheet.create({
   container:      { flex: 1, backgroundColor: '#f1f5f9' },
   header:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 18 },
   iconBtn:        { padding: 6 },
-  headerTitle:    { fontSize: 18, fontWeight: 'bold', color: 'white' },
-  headerSub:      { fontSize: 12, color: '#94a3b8', marginTop: 2 },
+  headerTitle:    { fontSize: 18, fontWeight: 'bold', color: 'white', textAlign: 'center' },
+  headerSub:      { fontSize: 12, color: '#94a3b8', marginTop: 2, textAlign: 'center' },
+
   statsRow:       { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
   statCard:       { flex: 1, backgroundColor: 'white', borderRadius: 12, padding: 14, borderLeftWidth: 4, elevation: 2 },
   statCount:      { fontSize: 24, fontWeight: 'bold' },
   statLabel:      { fontSize: 11, color: '#64748b', marginTop: 2 },
+
   listContent:    { padding: 16, paddingBottom: 30 },
-  card:           { backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 14, elevation: 3 },
+  card:           { backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 14, elevation: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 } },
   cardHeader:     { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   avatarCircle:   { width: 44, height: 44, borderRadius: 22, backgroundColor: '#0984E3', justifyContent: 'center', alignItems: 'center' },
   avatarText:     { color: 'white', fontWeight: 'bold', fontSize: 18 },
@@ -319,19 +380,29 @@ const styles = StyleSheet.create({
   userEmail:      { fontSize: 12, color: '#64748b', marginTop: 2 },
   statusBadge:    { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   statusText:     { fontSize: 12, fontWeight: '700' },
-  detailsBox:     { backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, gap: 10, marginBottom: 14 },
+
+  detailsBox:     { backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, gap: 10, marginBottom: 14, borderWidth: 1, borderColor: '#e2e8f0' },
   detailRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },
   detailLabel:    { flex: 1, fontSize: 13, color: '#64748b' },
   detailValue:    { fontSize: 13, fontWeight: '600', color: '#1e293b' },
-  detailAmount:   { fontSize: 16, fontWeight: 'bold', color: '#059669' },
+  detailAmount:   { fontSize: 17, fontWeight: 'bold', color: '#059669' },
   methodBadge:    { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
   methodText:     { fontSize: 13, fontWeight: '700' },
+
   btnRow:         { flexDirection: 'row', gap: 10 },
   btn:            { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 12, gap: 6 },
   btnFull:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 12, gap: 6 },
   btnText:        { color: 'white', fontWeight: 'bold', fontSize: 14 },
+
   processingBox:  { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, paddingVertical: 14 },
   processingText: { color: '#0984E3', fontWeight: '600' },
+
+  // ✅ Success & Reject banners
+  successBanner:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8FDF5', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#00B894' + '40' },
+  successBannerText: { color: '#00B894', fontWeight: '700', fontSize: 14 },
+  rejectBanner:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#E17055' + '40' },
+  rejectBannerText: { color: '#E17055', fontWeight: '700', fontSize: 14 },
+
   centered:       { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
   loadingText:    { marginTop: 12, color: '#64748b', fontSize: 14 },
   emptyText:      { marginTop: 14, fontSize: 16, color: '#64748b' },
