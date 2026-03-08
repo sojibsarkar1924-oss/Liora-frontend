@@ -321,7 +321,7 @@ export default function InitialPaymentScreen() {
             <Ionicons name="phone-portrait-outline" size={20} color="#E2136E" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="01XXXXXXXXX"
+              placeholder="01812323466"
               placeholderTextColor="#94a3b8"
               keyboardType="phone-pad"
               value={senderNumber}
