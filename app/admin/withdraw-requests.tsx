@@ -105,7 +105,7 @@ export default function AdminWithdrawRequests() {
           text: '📲 bKash Merchant খুলুন',
           onPress: () => {
             // bKash Merchant অ্যাপ খোলার চেষ্টা
-            Linking.openURL('market://details?id=com.bkash.merchant').catch(() => {
+            Linking.openURL('com.bkash.merchant.merchantapp://').catch(() => {
               Linking.openURL('https://play.google.com/store/apps/details?id=com.bkash.merchant');
             });
             // ✅ FIX: setTimeout নেই — item টা pending confirm এ রাখো
