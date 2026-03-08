@@ -1,4 +1,5 @@
 const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
+
 // ============================================================
 // ✅ রেজিস্ট্রেশন
 // ============================================================
@@ -151,7 +152,7 @@ export const getMyTransactions = async (userId) => {
 };
 
 // ============================================================
-// ✅ NEW: Referral Info — রেফারেল তথ্য
+// ✅ Referral Info
 // ============================================================
 export const getReferralInfo = async (userId) => {
   try {
@@ -165,7 +166,7 @@ export const getReferralInfo = async (userId) => {
 };
 
 // ============================================================
-// ✅ Admin functions
+// ✅ Admin — Payments
 // ============================================================
 export const getAdminPayments = async (token) => {
   try {
@@ -183,7 +184,7 @@ export const getAdminPayments = async (token) => {
 export const getAdminWithdraws = async (token) => {
   try {
     const response = await fetch(`${API_URL}/withdraw/admin/requests`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`},
     });
     const data = await response.json();
     if (!response.ok) throw { msg: data?.msg || 'লোড ব্যর্থ।' };
@@ -223,12 +224,22 @@ export const adminRejectPayment = async (paymentId, token) => {
   }
 };
 
+// ============================================================
+// ✅ FIX: Admin Withdraw — আলাদা endpoint
+// "পাঠিয়ে দিন" → /manual-approve (টাকা refund হয় না)
+// "বাতিল"       → /reject        (টাকা refund হয়)
+// ============================================================
 export const adminWithdrawAction = async (withdrawId, status, token) => {
   try {
-    const response = await fetch(`${API_URL}/withdraw/admin/action`, {
+    // ✅ status অনুযায়ী আলাদা endpoint
+    const endpoint = status === 'Approved'
+      ? `${API_URL}/withdraw/admin/manual-approve`  // পাঠিয়ে দিন
+      : `${API_URL}/withdraw/admin/reject`;          // বাতিল
+
+    const response = await fetch(endpoint, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ withdrawId, status }),
+      body:    JSON.stringify({ id: withdrawId }),
     });
     const data = await response.json();
     if (!response.ok || !data.success) throw { msg: data?.msg || 'ব্যর্থ।' };
