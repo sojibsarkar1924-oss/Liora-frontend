@@ -19,17 +19,17 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { submitDeposit } from '../services/api';
 
-// ✅ প্যাকেজ লিস্ট — signup page এর সাথে মিল
+// ✅ প্যাকেজ লিস্ট — tasksController.js এর সাথে মিল
 const PACKAGES = [
-  { id: 'bronze',   name: 'Bronze',   price: 1350,  daily: 48,  tasks: 4,  color: '#CD7F32' },
-  { id: 'silver',   name: 'Silver',   price: 2700,  daily: 108, tasks: 6,  color: '#C0C0C0' },
-  { id: 'gold',     name: 'Gold',     price: 5400,  daily: 224, tasks: 8,  color: '#FFD700' },
-  { id: 'platinum', name: 'Platinum', price: 10800, daily: 460, tasks: 10, color: '#E5E4E2' },
-  { id: 'diamond',  name: 'Diamond',  price: 21600, daily: 960, tasks: 12, color: '#B9F2FF' },
+  { id: 'bronze',   name: 'Bronze',   price: 1350,  daily: 48,  tasks: 4,  perTask: 12,  color: '#CD7F32' },
+  { id: 'silver',   name: 'Silver',   price: 2700,  daily: 108, tasks: 6,  perTask: 18,  color: '#C0C0C0' },
+  { id: 'gold',     name: 'Gold',     price: 5400,  daily: 224, tasks: 8,  perTask: 28,  color: '#FFD700' },
+  { id: 'platinum', name: 'Platinum', price: 10800, daily: 460, tasks: 10, perTask: 46,  color: '#E5E4E2' },
+  { id: 'diamond',  name: 'Diamond',  price: 21600, daily: 960, tasks: 12, perTask: 80,  color: '#B9F2FF' },
 ];
 
-// ✅ শুধু বিকাশ মার্চেন্ট
-const BKASH_MERCHANT = '';
+// ✅ আপনার বিকাশ মার্চেন্ট নম্বর এখানে দিন
+const BKASH_MERCHANT = '01XXXXXXXXX';
 
 export default function InitialPaymentScreen() {
   const router = useRouter();
@@ -42,10 +42,12 @@ export default function InitialPaymentScreen() {
   const [loading,         setLoading]         = useState(false);
   const [copied,          setCopied]          = useState(false);
 
+  // ✅ FIX: submitted state — redirect loop বন্ধ করে
+  const [submitted, setSubmitted] = useState(false);
+
   useEffect(() => {
     const loadUser = async () => {
       try {
-        // AuthContext থেকে আগে নাও
         if (userData) { setUser(userData); return; }
         const stored = await AsyncStorage.getItem('userData');
         if (stored) setUser(JSON.parse(stored));
@@ -98,11 +100,11 @@ export default function InitialPaymentScreen() {
         packageTasks: selectedPackage.tasks,
       });
 
-      Alert.alert(
-        '✅ রিকোয়েস্ট জমা হয়েছে!',
-        'আপনার পেমেন্ট রিকোয়েস্ট অ্যাডমিনের কাছে পাঠানো হয়েছে। অ্যাডমিন যাচাই করার পর আপনার একাউন্ট সক্রিয় হবে।',
-        [{ text: 'ঠিক আছে', onPress: () => router.replace('/') }]
-      );
+      // ✅ FIX: router.replace('/') করা হচ্ছে না
+      // বরং submitted = true করলে এই পেজেই pending screen দেখাবে
+      // Home page আর redirect করবে না
+      setSubmitted(true);
+
     } catch (error: any) {
       const msg = error?.msg || error?.message || 'সার্ভারে সমস্যা হয়েছে।';
       Alert.alert('❌ ব্যর্থ', msg);
@@ -110,6 +112,88 @@ export default function InitialPaymentScreen() {
       setLoading(false);
     }
   };
+
+  // ✅ FIX: Submit হলে Pending স্ক্রিন দেখাও — loop বন্ধ
+  if (submitted) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
+        <LinearGradient colors={['#1e293b', '#0f172a']} style={styles.header}>
+          <View style={styles.lockIcon}>
+            <Ionicons name="time-outline" size={32} color="#F59E0B" />
+          </View>
+          <Text style={styles.headerTitle}>রিকোয়েস্ট জমা হয়েছে!</Text>
+          <Text style={styles.headerSub}>
+            অ্যাডমিন যাচাই করার পর আপনার একাউন্ট সক্রিয় হবে
+          </Text>
+        </LinearGradient>
+
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.pendingCard}>
+            <View style={styles.pendingIconCircle}>
+              <Ionicons name="hourglass-outline" size={52} color="#F59E0B" />
+            </View>
+
+            <Text style={styles.pendingTitle}>অনুমোদনের অপেক্ষায়</Text>
+            <Text style={styles.pendingSubtitle}>
+              আপনার পেমেন্ট রিকোয়েস্ট সফলভাবে জমা হয়েছে।
+            </Text>
+
+            <View style={styles.pendingInfoBox}>
+              <View style={styles.pendingRow}>
+                <Ionicons name="cube-outline" size={18} color="#6C5CE7" />
+                <Text style={styles.pendingLabel}>প্যাকেজ</Text>
+                <Text style={styles.pendingValue}>{selectedPackage.name}</Text>
+              </View>
+              <View style={styles.pendingRow}>
+                <Ionicons name="cash-outline" size={18} color="#6C5CE7" />
+                <Text style={styles.pendingLabel}>পেমেন্ট</Text>
+                <Text style={styles.pendingValue}>৳{selectedPackage.price.toLocaleString()}</Text>
+              </View>
+              <View style={styles.pendingRow}>
+                <Ionicons name="phone-portrait-outline" size={18} color="#6C5CE7" />
+                <Text style={styles.pendingLabel}>বিকাশ নম্বর</Text>
+                <Text style={styles.pendingValue}>{senderNumber}</Text>
+              </View>
+              <View style={styles.pendingRow}>
+                <Ionicons name="receipt-outline" size={18} color="#6C5CE7" />
+                <Text style={styles.pendingLabel}>TrxID</Text>
+                <Text style={styles.pendingValue}>{trxId}</Text>
+              </View>
+            </View>
+
+            <View style={styles.stepsList}>
+              <View style={styles.stepsItem}>
+                <View style={[styles.stepsDot, { backgroundColor: '#00B894' }]} />
+                <Text style={styles.stepsItemText}>রিকোয়েস্ট জমা ✅</Text>
+              </View>
+              <View style={styles.stepsItem}>
+                <View style={[styles.stepsDot, { backgroundColor: '#F59E0B' }]} />
+                <Text style={styles.stepsItemText}>অ্যাডমিন যাচাই করছেন ⏳</Text>
+              </View>
+              <View style={styles.stepsItem}>
+                <View style={[styles.stepsDot, { backgroundColor: '#94a3b8' }]} />
+                <Text style={styles.stepsItemText}>একাউন্ট সক্রিয় হবে</Text>
+              </View>
+            </View>
+
+            <Text style={styles.pendingNote}>
+              ⏱ সর্বোচ্চ ২৪ ঘণ্টার মধ্যে অ্যাপ্রুভ হবে। অ্যাপ রিফ্রেশ করুন।
+            </Text>
+
+            <TouchableOpacity
+              style={styles.refreshBtn}
+              onPress={() => router.replace('/')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="refresh-outline" size={20} color="white" />
+              <Text style={styles.refreshBtnText}>হোমে যান / রিফ্রেশ করুন</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -197,6 +281,10 @@ export default function InitialPaymentScreen() {
                   <Ionicons name="checkmark-circle-outline" size={13} color="#64748b" />
                   <Text style={styles.packageDetailText}>{p.tasks} কাজ/দিন</Text>
                 </View>
+                <View style={styles.packageDetail}>
+                  <Ionicons name="cash-outline" size={13} color="#64748b" />
+                  <Text style={styles.packageDetailText}>প্রতি কাজ ৳{p.perTask}</Text>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -219,6 +307,10 @@ export default function InitialPaymentScreen() {
             <Text style={styles.summaryLabel}>দৈনিক আয়</Text>
             <Text style={[styles.summaryValue, { color: '#059669' }]}>৳{selectedPackage.daily}</Text>
           </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>প্রতি কাজ</Text>
+            <Text style={[styles.summaryValue, { color: '#059669' }]}>৳{selectedPackage.perTask}</Text>
+          </View>
         </View>
 
         {/* ── ফর্ম ── */}
@@ -236,9 +328,6 @@ export default function InitialPaymentScreen() {
               onChangeText={setSenderNumber}
               maxLength={11}
             />
-            {senderNumber.length === 11 && (
-              <Ionicons name="checkmark-circle" size={20} color="#059669" />
-            )}
           </View>
 
           <Text style={styles.inputLabel}>Transaction ID (TrxID)</Text>
@@ -246,15 +335,11 @@ export default function InitialPaymentScreen() {
             <Ionicons name="receipt-outline" size={20} color="#E2136E" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="বিকাশ থেকে প্রাপ্ত TrxID"
+              placeholder="TrxID দিন"
               placeholderTextColor="#94a3b8"
               value={trxId}
               onChangeText={setTrxId}
-              autoCapitalize="characters"
             />
-            {trxId.length > 5 && (
-              <Ionicons name="checkmark-circle" size={20} color="#059669" />
-            )}
           </View>
         </View>
 
@@ -357,7 +442,6 @@ const styles = StyleSheet.create({
   bkashLogoText:  { color: 'white', fontWeight: 'bold', fontSize: 16 },
   merchantBadge:  { backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   merchantBadgeText: { fontSize: 12, color: '#92400E', fontWeight: '600' },
-
   bkashLabel:    { fontSize: 13, color: '#64748b', marginBottom: 8 },
   bkashNumberRow: {
     flexDirection: 'row',
@@ -491,4 +575,47 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   noteText: { flex: 1, fontSize: 12, color: '#3b82f6', lineHeight: 18 },
+
+  // ✅ Pending Screen Styles
+  pendingCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 4,
+    marginTop: 10,
+  },
+  pendingIconCircle: {
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 20,
+  },
+  pendingTitle: {
+    fontSize: 22, fontWeight: 'bold', color: '#1e293b', marginBottom: 8, textAlign: 'center',
+  },
+  pendingSubtitle: {
+    fontSize: 14, color: '#64748b', textAlign: 'center', lineHeight: 22, marginBottom: 20,
+  },
+  pendingInfoBox: {
+    width: '100%', backgroundColor: '#f8fafc',
+    borderRadius: 14, padding: 16, gap: 12, marginBottom: 20,
+    borderWidth: 1, borderColor: '#e2e8f0',
+  },
+  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pendingLabel: { flex: 1, fontSize: 13, color: '#64748b' },
+  pendingValue: { fontSize: 13, fontWeight: '700', color: '#1e293b' },
+  stepsList: { width: '100%', gap: 10, marginBottom: 20 },
+  stepsItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepsDot: { width: 12, height: 12, borderRadius: 6 },
+  stepsItemText: { fontSize: 14, color: '#1e293b', fontWeight: '500' },
+  pendingNote: {
+    fontSize: 13, color: '#92400E', textAlign: 'center',
+    backgroundColor: '#FEF3C7', padding: 12, borderRadius: 10, marginBottom: 20, lineHeight: 20,
+  },
+  refreshBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#0984E3', borderRadius: 14, padding: 16, gap: 10, width: '100%',
+  },
+  refreshBtnText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
 });
