@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Clipboard,
   FlatList,
   Linking,
   RefreshControl,
@@ -19,9 +20,9 @@ import {
 const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
 
 const STATUS_COLOR: any = {
-  Pending:  { bg: '#FFF8E1', text: '#F59E0B', label: 'Pending' },
-  Approved: { bg: '#E8FDF5', text: '#00B894', label: 'Approved' },
-  Rejected: { bg: '#FFF0EE', text: '#E17055', label: 'Rejected' },
+  Pending:  { bg: '#FFF8E1', text: '#F59E0B', label: '⏳ Pending' },
+  Approved: { bg: '#E8FDF5', text: '#00B894', label: '✅ Approved' },
+  Rejected: { bg: '#FFF0EE', text: '#E17055', label: '❌ Rejected' },
 };
 
 const METHOD_COLOR: any = {
@@ -40,7 +41,7 @@ export default function AdminWithdrawRequests() {
   const fetchRequests = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
-      const response = await fetch(API_URL + '/admin/requests');
+      const response = await fetch(API_URL + '/withdraw/admin/requests');
       const data     = await response.json();
       setRequests(data?.success && Array.isArray(data.data) ? data.data : []);
     } catch {
@@ -64,7 +65,7 @@ export default function AdminWithdrawRequests() {
         body:    JSON.stringify({ id }),
       });
       const data = await res.json();
-      Alert.alert(data.success ? 'Success' : 'Failed', data.msg || '');
+      Alert.alert(data.success ? '✅ সফল!' : '❌ Failed', data.msg || '');
       if (data.success) fetchRequests(false);
     } catch {
       Alert.alert('Error', 'Network error.');
@@ -76,10 +77,10 @@ export default function AdminWithdrawRequests() {
   const handleAutoApprove = (item: any) => {
     Alert.alert(
       'Auto bKash',
-      'Send ' + item.amount + ' BDT to ' + item.number + '?',
+      item.amount + ' BDT পাঠাবেন ' + item.number + ' তে?',
       [
-        { text: 'No', style: 'cancel' },
-        { text: 'Yes', onPress: () => doAction('/admin/auto-approve', item._id) },
+        { text: 'না', style: 'cancel' },
+        { text: 'হ্যাঁ', onPress: () => doAction('/withdraw/admin/auto-approve', item._id) },
       ]
     );
   };
@@ -87,7 +88,7 @@ export default function AdminWithdrawRequests() {
   const handleManualApprove = (item: any) => {
     Alert.alert(
       '💸 পাঠিয়ে দিন',
-     `${item.amount} টাকা পাঠান:\n📱 ${item.method}: ${item.number}`,
+      `${item.amount} টাকা পাঠান:\n📱 ${item.method}: ${item.number}`,
       [
         { text: 'বাতিল', style: 'cancel' },
         {
@@ -102,7 +103,7 @@ export default function AdminWithdrawRequests() {
                 'টাকা পাঠানো হয়েছে?',
                 [
                   { text: 'না', style: 'cancel' },
-                  { text: 'হ্যাঁ, Confirm', onPress: () => doAction('/admin/manual-approve', item._id) },
+                  { text: 'হ্যাঁ, Confirm', onPress: () => doAction('/withdraw/admin/manual-approve', item._id) },
                 ]
               );
             }, 4000);
@@ -114,13 +115,18 @@ export default function AdminWithdrawRequests() {
 
   const handleReject = (item: any) => {
     Alert.alert(
-      'Reject?',
-      item.amount + ' BDT will be refunded to user.',
+      '❌ বাতিল করবেন?',
+      item.amount + ' টাকা user এর কাছে ফেরত যাবে।',
       [
-        { text: 'No', style: 'cancel' },
-        { text: 'Reject', style: 'destructive', onPress: () => doAction('/admin/reject', item._id) },
+        { text: 'না', style: 'cancel' },
+        { text: 'বাতিল করুন', style: 'destructive', onPress: () => doAction('/withdraw/admin/reject', item._id) },
       ]
     );
+  };
+
+  const copyNumber = (number: string) => {
+    Clipboard.setString(number);
+    Alert.alert('✅ কপি হয়েছে!', number);
   };
 
   const RequestCard = ({ item }: any) => {
@@ -166,7 +172,11 @@ export default function AdminWithdrawRequests() {
           <View style={styles.detailRow}>
             <Ionicons name="call-outline" size={16} color="#64748b" />
             <Text style={styles.detailLabel}>Number</Text>
-            <Text style={styles.detailValue}>{item.number}</Text>
+            <TouchableOpacity onPress={() => copyNumber(item.number)}>
+              <Text style={[styles.detailValue, { color: '#0984E3', textDecorationLine: 'underline' }]}>
+                {item.number} 📋
+              </Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.detailRow}>
             <Ionicons name="wallet-outline" size={16} color="#64748b" />
