@@ -1,5 +1,6 @@
+cat > /mnt/user-data/outputs/withdraw-requests.tsx << 'ENDOFFILE'
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard'; // ✅ FIX: deprecated Clipboard replace
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -37,6 +38,8 @@ export default function AdminWithdrawRequests() {
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionId,   setActionId]   = useState<string | null>(null);
+  // ✅ NEW: যে item এর জন্য bKash খোলা হয়েছে সেটা track করা
+  const [pendingConfirmItem, setPendingConfirmItem] = useState<any | null>(null);
 
   const fetchRequests = async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -86,12 +89,17 @@ export default function AdminWithdrawRequests() {
     );
   };
 
-  // ✅ FIX: Manual approve — bKash Merchant খুলবে, confirm করলে status=Approved
-  // টাকা refund হবে না — admin নিজে merchant থেকে পাঠাবেন
-  const handleManualApprove = (item: any) => {
+  // ✅ FIX: Manual approve — bKash Merchant খুলবে
+  // Admin নিজে টাকা পাঠানোর পর ফিরে এসে "Confirm" বাটন চাপবে
+  const handleManualApprove = async (item: any) => {
+    // ১. নম্বর কপি করে দাও
+    try {
+      await Clipboard.setStringAsync(item.number);
+    } catch {}
+
     Alert.alert(
       '💸 ম্যানুয়াল পেমেন্ট',
-      `${item.amount} টাকা পাঠান:\n📱 ${item.method}: ${item.number}\n\nbKash Merchant অ্যাপ খুলে টাকা পাঠান, তারপর Confirm করুন।`,
+      `নম্বর কপি হয়েছে ✅\n\n📱 ${item.method}: ${item.number}\n💰 পরিমাণ: ${item.amount} টাকা\n\nbKash Merchant অ্যাপ খুলে টাকা পাঠান।\nটাকা পাঠানো হলে ফিরে এসে "✅ Confirm" বাটন চাপুন।`,
       [
         { text: 'বাতিল', style: 'cancel' },
         {
@@ -101,21 +109,27 @@ export default function AdminWithdrawRequests() {
             Linking.openURL('market://details?id=com.bkash.merchant').catch(() => {
               Linking.openURL('https://play.google.com/store/apps/details?id=com.bkash.merchant');
             });
+            // ✅ FIX: setTimeout নেই — item টা pending confirm এ রাখো
+            // Admin ফিরে এসে card এ "✅ Confirm" বাটন দেখবে
+            setPendingConfirmItem(item._id);
+          },
+        },
+      ]
+    );
+  };
 
-            // ৫ সেকেন্ড পর confirm নেওয়া
-            setTimeout(() => {
-              Alert.alert(
-                '✅ টাকা পাঠানো হয়েছে?',
-                `${item.amount} টাকা ${item.number} তে পাঠানো কি সম্পন্ন হয়েছে?\n\nConfirm করলে user এর withdraw status Approved হবে।`,
-                [
-                  { text: 'না, এখনো না', style: 'cancel' },
-                  {
-                    text: 'হ্যাঁ, Confirm ✅',
-                    onPress: () => doAction('/withdraw/admin/manual-approve', item._id),
-                  },
-                ]
-              );
-            }, 5000);
+  // ✅ Admin ফিরে এসে এই বাটন চাপবে
+  const handleConfirmSent = (item: any) => {
+    Alert.alert(
+      '✅ নিশ্চিত করুন',
+      `${item.amount} টাকা ${item.number} তে পাঠানো সম্পন্ন হয়েছে?\n\nConfirm করলে user এর withdraw status Approved হবে।`,
+      [
+        { text: 'না, এখনো না', style: 'cancel' },
+        {
+          text: 'হ্যাঁ, Confirm ✅',
+          onPress: () => {
+            setPendingConfirmItem(null);
+            doAction('/withdraw/admin/manual-approve', item._id);
           },
         },
       ]
@@ -138,7 +152,6 @@ export default function AdminWithdrawRequests() {
     );
   };
 
-  // ✅ FIX: expo-clipboard ব্যবহার করা হচ্ছে
   const copyNumber = async (number: string) => {
     try {
       await Clipboard.setStringAsync(number);
@@ -149,12 +162,13 @@ export default function AdminWithdrawRequests() {
   };
 
   const RequestCard = ({ item }: any) => {
-    const isProcessing = actionId === item._id;
-    const statusInfo   = STATUS_COLOR[item.status] || STATUS_COLOR.Pending;
-    const methodColor  = METHOD_COLOR[item.method] || '#333';
-    const amountStr    = String(Math.floor(Number(item.amount) || 0));
-    const balanceStr   = String(Math.floor(Number(item.userId?.balance ?? item.userId?.wallet ?? 0)));
-    const dateStr      = item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-';
+    const isProcessing  = actionId === item._id;
+    const isPendingConfirm = pendingConfirmItem === item._id;
+    const statusInfo    = STATUS_COLOR[item.status] || STATUS_COLOR.Pending;
+    const methodColor   = METHOD_COLOR[item.method] || '#333';
+    const amountStr     = String(Math.floor(Number(item.amount) || 0));
+    const balanceStr    = String(Math.floor(Number(item.userId?.balance ?? item.userId?.wallet ?? 0)));
+    const dateStr       = item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-';
 
     return (
       <View style={styles.card}>
@@ -211,7 +225,6 @@ export default function AdminWithdrawRequests() {
             <Text style={styles.detailValue}>{dateStr}</Text>
           </View>
 
-          {/* ✅ Approved হলে TrxID বা Manual note দেখাও */}
           {item.bkashTrxID ? (
             <View style={styles.detailRow}>
               <Ionicons name="checkmark-circle-outline" size={16} color="#00B894" />
@@ -238,28 +251,40 @@ export default function AdminWithdrawRequests() {
             </View>
           ) : (
             <View>
-              {/* Auto + Manual বাটন */}
-              <View style={styles.btnRow}>
+              {/* ✅ bKash খোলার পরে "Confirm" বাটন দেখাবে */}
+              {isPendingConfirm ? (
                 <TouchableOpacity
-                  style={[styles.btn, { backgroundColor: '#0984E3' }]}
-                  onPress={() => handleAutoApprove(item)}
+                  style={[styles.btnFull, { backgroundColor: '#00B894', marginBottom: 8 }]}
+                  onPress={() => handleConfirmSent(item)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="flash-outline" size={16} color="white" />
-                  <Text style={styles.btnText}>Auto bKash</Text>
+                  <Ionicons name="checkmark-circle-outline" size={16} color="white" />
+                  <Text style={styles.btnText}>✅ টাকা পাঠানো হয়েছে — Confirm করুন</Text>
                 </TouchableOpacity>
+              ) : (
+                /* Auto + Manual বাটন */
+                <View style={styles.btnRow}>
+                  <TouchableOpacity
+                    style={[styles.btn, { backgroundColor: '#0984E3' }]}
+                    onPress={() => handleAutoApprove(item)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="flash-outline" size={16} color="white" />
+                    <Text style={styles.btnText}>Auto bKash</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.btn, { backgroundColor: '#6C5CE7' }]}
-                  onPress={() => handleManualApprove(item)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="hand-right-outline" size={16} color="white" />
-                  <Text style={styles.btnText}>পাঠিয়ে দেন</Text>
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity
+                    style={[styles.btn, { backgroundColor: '#6C5CE7' }]}
+                    onPress={() => handleManualApprove(item)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="hand-right-outline" size={16} color="white" />
+                    <Text style={styles.btnText}>পাঠিয়ে দেন</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
-              {/* Reject বাটন */}
+              {/* Reject বাটন সবসময় দেখাবে */}
               <TouchableOpacity
                 style={[styles.btnFull, { backgroundColor: '#EF4444', marginTop: 8 }]}
                 onPress={() => handleReject(item)}
@@ -272,7 +297,7 @@ export default function AdminWithdrawRequests() {
           )
         ) : null}
 
-        {/* ✅ Approved হলে সবুজ success banner দেখাও */}
+        {/* Approved banner */}
         {item.status === 'Approved' ? (
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={18} color="#00B894" />
@@ -282,7 +307,7 @@ export default function AdminWithdrawRequests() {
           </View>
         ) : null}
 
-        {/* ✅ Rejected হলে লাল banner দেখাও */}
+        {/* Rejected banner */}
         {item.status === 'Rejected' ? (
           <View style={styles.rejectBanner}>
             <Ionicons name="close-circle" size={18} color="#E17055" />
@@ -397,7 +422,6 @@ const styles = StyleSheet.create({
   processingBox:  { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, paddingVertical: 14 },
   processingText: { color: '#0984E3', fontWeight: '600' },
 
-  // ✅ Success & Reject banners
   successBanner:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8FDF5', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#00B894' + '40' },
   successBannerText: { color: '#00B894', fontWeight: '700', fontSize: 14 },
   rejectBanner:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#E17055' + '40' },
@@ -407,3 +431,4 @@ const styles = StyleSheet.create({
   loadingText:    { marginTop: 12, color: '#64748b', fontSize: 14 },
   emptyText:      { marginTop: 14, fontSize: 16, color: '#64748b' },
 });
+ENDOFFILE

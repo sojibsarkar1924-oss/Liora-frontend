@@ -29,7 +29,7 @@ const PACKAGES = [
 ];
 
 // ✅ আপনার বিকাশ মার্চেন্ট নম্বর এখানে দিন
-const BKASH_MERCHANT = '01XXXXXXXXX';
+const BKASH_MERCHANT = '01812323466';
 
 export default function InitialPaymentScreen() {
   const router = useRouter();
