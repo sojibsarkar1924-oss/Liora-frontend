@@ -1,4 +1,3 @@
-cat > /mnt/user-data/outputs/withdraw-requests.tsx << 'ENDOFFILE'
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -431,4 +430,3 @@ const styles = StyleSheet.create({
   loadingText:    { marginTop: 12, color: '#64748b', fontSize: 14 },
   emptyText:      { marginTop: 14, fontSize: 16, color: '#64748b' },
 });
-ENDOFFILE
