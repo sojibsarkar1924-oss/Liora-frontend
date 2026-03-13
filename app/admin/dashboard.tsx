@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
+  Linking,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -39,10 +42,26 @@ export default function AdminDashboard() {
     pendingPayments: 0, approvedPayments: 0, pendingWithdraws: 0,
   });
 
+  // ✅ bKash থেকে ফিরলে Confirm বাটন দেখাবে
+  const [pendingConfirmId, setPendingConfirmId] = useState<string | null>(null);
+  const appState = useRef(AppState.currentState);
+  const bkashOpenedForId = useRef<string | null>(null);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', nextState => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        if (bkashOpenedForId.current) {
+          setPendingConfirmId(bkashOpenedForId.current);
+        }
+      }
+      appState.current = nextState;
+    });
+    return () => sub.remove();
+  }, []);
+
   const fetchAll = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
-      // ✅ api.js থেকে সঠিক function call — URL mismatch নেই
       const [payData, wdData] = await Promise.all([
         getAdminPayments(userToken).catch(() => ({ data: [] })),
         getAdminWithdraws(userToken).catch(() => ({ data: [] })),
@@ -51,7 +70,7 @@ export default function AdminDashboard() {
       const payList = Array.isArray(payData?.payments) ? payData.payments :
                 Array.isArray(payData?.data)      ? payData.data     : [];
 
-const wdList  = Array.isArray(wdData?.withdraws) ? wdData.withdraws :
+      const wdList  = Array.isArray(wdData?.withdraws) ? wdData.withdraws :
                 Array.isArray(wdData?.data)       ? wdData.data      :
                 Array.isArray(wdData)             ? wdData           : [];
       setPayments(payList);
@@ -100,28 +119,67 @@ const wdList  = Array.isArray(wdData?.withdraws) ? wdData.withdraws :
     ]);
   };
 
-  // ── Withdraw Approve ──
-  const approveWithdraw = (id: string, name: string) => {
-    Alert.alert('💸 পাঠাবেন?', `${name} এর উইথড্র পাঠাবেন?`, [
-      { text: 'না', style: 'cancel' },
-      { text: 'পাঠান', onPress: async () => {
-        try {
-          await adminWithdrawAction(id, 'Approved', userToken);
-          Alert.alert('✅ সফল!', 'উইথড্র পাঠানো হয়েছে।');
-          fetchAll(false);
-        } catch (e: any) { Alert.alert('❌ ব্যর্থ', e?.msg || 'সমস্যা হয়েছে।'); }
-      }},
-    ]);
+  // ✅ FIX: Withdraw Approve — bKash Merchant খুলবে, নম্বর copy হবে
+  const approveWithdraw = async (item: any) => {
+    // নম্বর copy করো
+    try { await Clipboard.setStringAsync(item.number); } catch {}
+
+    Alert.alert(
+      '💸 ম্যানুয়াল পেমেন্ট',
+      `✅ নম্বর কপি হয়েছে!\n\n📱 ${item.method || 'Bkash'}: ${item.number}\n💰 পরিমাণ: ৳${item.amount}\n\nbKash Merchant অ্যাপ খুলে টাকা পাঠান।\nটাকা পাঠানো হলে ফিরে এসে "Confirm" বাটন চাপুন।`,
+      [
+        { text: 'বাতিল', style: 'cancel' },
+        {
+          text: '📲 bKash Merchant খুলুন',
+          onPress: async () => {
+            bkashOpenedForId.current = item._id;
+            setPendingConfirmId(item._id);
+            try {
+              await Linking.openURL('intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.bkash.merchantapp;end');
+            } catch {
+              try {
+                await Linking.openURL('market://details?id=com.bkash.merchantapp');
+              } catch {
+                Alert.alert('⚠️', 'bKash Merchant খুলতে পারেনি। নম্বর কপি হয়েছে।');
+              }
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // ✅ Admin ফিরে এসে Confirm চাপবে
+  const confirmWithdrawSent = async (item: any) => {
+    Alert.alert(
+      '✅ নিশ্চিত করুন',
+      `${item.amount} টাকা ${item.number} তে পাঠানো হয়েছে?\n\nConfirm করলে status Approved হবে।`,
+      [
+        { text: 'না, এখনো না', style: 'cancel' },
+        {
+          text: 'হ্যাঁ, Confirm ✅',
+          onPress: async () => {
+            bkashOpenedForId.current = null;
+            setPendingConfirmId(null);
+            try {
+              await adminWithdrawAction(item._id, 'Approved', userToken);
+              Alert.alert('✅ সফল!', 'উইথড্র Approved হয়েছে।');
+              fetchAll(false);
+            } catch (e: any) { Alert.alert('❌ ব্যর্থ', e?.msg || 'সমস্যা হয়েছে।'); }
+          },
+        },
+      ]
+    );
   };
 
   // ── Withdraw Reject ──
   const rejectWithdraw = (id: string, name: string) => {
-    Alert.alert('❌ বাতিল?', `${name} এর উইথড্র বাতিল করবেন?`, [
+    Alert.alert('❌ বাতিল?', `${name} এর উইথড্র বাতিল করবেন? টাকা ফেরত যাবে।`, [
       { text: 'না', style: 'cancel' },
       { text: 'বাতিল', style: 'destructive', onPress: async () => {
         try {
           await adminWithdrawAction(id, 'Rejected', userToken);
-          Alert.alert('সফল', 'উইথড্র বাতিল হয়েছে।');
+          Alert.alert('সফল', 'উইথড্র বাতিল হয়েছে। টাকা ফেরত গেছে।');
           fetchAll(false);
         } catch (e: any) { Alert.alert('❌ ব্যর্থ', e?.msg || 'সমস্যা হয়েছে।'); }
       }},
@@ -192,52 +250,72 @@ const wdList  = Array.isArray(wdData?.withdraws) ? wdData.withdraws :
   );
 
   // ── Withdraw Card ──
-  const renderWithdrawCard = ({ item }: any) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.avatar, { backgroundColor: '#7c3aed' }]}>
-          <Text style={styles.avatarText}>{(item.userId?.name || 'U')[0].toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.cardName}>{item.userId?.name || 'অজানা'}</Text>
-          <Text style={styles.cardSub}>{item.userId?.email || ''}</Text>
-        </View>
-        <View style={[styles.badge, { backgroundColor: '#ede9fe' }]}>
-          <Text style={[styles.badgeText, { color: '#7c3aed' }]}>৳{item.amount?.toLocaleString()}</Text>
-        </View>
-      </View>
+  const renderWithdrawCard = ({ item }: any) => {
+    const isPendingConfirm = pendingConfirmId === item._id;
 
-      <View style={styles.infoGrid}>
-        {[
-          { label: '📱 মেথড',   value: item.method || '-' },
-          { label: '📞 নম্বর',  value: item.number || '-' },
-          { label: '📅 তারিখ',  value: item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-' },
-          { label: '📊 স্ট্যাটাস', value: item.status || '-',
-            highlight: item.status === 'Pending' },
-        ].map((info, i) => (
-          <View key={i} style={styles.infoItem}>
-            <Text style={styles.infoLabel}>{info.label}</Text>
-            <Text style={[styles.infoValue, info.highlight && { color: '#d97706' }]}>{info.value}</Text>
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.avatar, { backgroundColor: '#7c3aed' }]}>
+            <Text style={styles.avatarText}>{(item.userId?.name || 'U')[0].toUpperCase()}</Text>
           </View>
-        ))}
-      </View>
-
-      {item.status === 'Pending' && (
-        <View style={styles.btnRow}>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
-            onPress={() => rejectWithdraw(item._id, item.userId?.name || 'ব্যবহারকারী')}>
-            <Ionicons name="close-circle-outline" size={18} color="white" />
-            <Text style={styles.actionBtnText}>বাতিল</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#7c3aed' }]}
-            onPress={() => approveWithdraw(item._id, item.userId?.name || 'ব্যবহারকারী')}>
-            <Ionicons name="send-outline" size={18} color="white" />
-            <Text style={styles.actionBtnText}>পাঠিয়ে দিন</Text>
-          </TouchableOpacity>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.cardName}>{item.userId?.name || 'অজানা'}</Text>
+            <Text style={styles.cardSub}>{item.userId?.email || ''}</Text>
+          </View>
+          <View style={[styles.badge, { backgroundColor: '#ede9fe' }]}>
+            <Text style={[styles.badgeText, { color: '#7c3aed' }]}>৳{item.amount?.toLocaleString()}</Text>
+          </View>
         </View>
-      )}
-    </View>
-  );
+
+        <View style={styles.infoGrid}>
+          {[
+            { label: '📱 মেথড',   value: item.method || '-' },
+            { label: '📞 নম্বর',  value: item.number || '-' },
+            { label: '📅 তারিখ',  value: item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-' },
+            { label: '📊 স্ট্যাটাস', value: item.status || '-',
+              highlight: item.status === 'Pending' },
+          ].map((info, i) => (
+            <View key={i} style={styles.infoItem}>
+              <Text style={styles.infoLabel}>{info.label}</Text>
+              <Text style={[styles.infoValue, info.highlight && { color: '#d97706' }]}>{info.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        {item.status === 'Pending' && (
+          <View>
+            {/* ✅ bKash থেকে ফিরলে Confirm বাটন */}
+            {isPendingConfirm ? (
+              <TouchableOpacity
+                style={[styles.actionBtnFull, { backgroundColor: '#00B894', marginBottom: 8 }]}
+                onPress={() => confirmWithdrawSent(item)}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color="white" />
+                <Text style={styles.actionBtnText}>✅ টাকা পাঠানো হয়েছে — Confirm করুন</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionBtnFull, { backgroundColor: '#7c3aed', marginBottom: 8 }]}
+                onPress={() => approveWithdraw(item)}
+              >
+                <Ionicons name="send-outline" size={18} color="white" />
+                <Text style={styles.actionBtnText}>💸 পাঠিয়ে দেন (bKash Merchant)</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.actionBtnFull, { backgroundColor: '#ef4444' }]}
+              onPress={() => rejectWithdraw(item._id, item.userId?.name || 'ব্যবহারকারী')}
+            >
+              <Ionicons name="close-circle-outline" size={18} color="white" />
+              <Text style={styles.actionBtnText}>❌ বাতিল (টাকা ফেরত)</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const currentData     = activeTab === 'payments' ? payments : withdraws;
   const currentRenderer = activeTab === 'payments' ? renderPaymentCard : renderWithdrawCard;
@@ -359,10 +437,11 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 11, color: '#94a3b8', marginBottom: 3 },
   infoValue: { fontSize: 13, fontWeight: '600', color: '#1e293b' },
 
-  btnRow:        { flexDirection: 'row', gap: 10 },
-  actionBtn:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, gap: 6 },
-  actionBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  statusTag:     { padding: 12, borderRadius: 12, alignItems: 'center' },
+  btnRow:         { flexDirection: 'row', gap: 10 },
+  actionBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, gap: 6 },
+  actionBtnFull:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, gap: 6 },
+  actionBtnText:  { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  statusTag:      { padding: 12, borderRadius: 12, alignItems: 'center' },
 
   empty:     { alignItems: 'center', paddingTop: 80, paddingHorizontal: 40 },
   emptyTitle:{ fontSize: 18, fontWeight: 'bold', color: '#64748b', marginTop: 16 },
