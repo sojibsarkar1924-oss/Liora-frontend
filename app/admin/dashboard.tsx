@@ -135,12 +135,19 @@ export default function AdminDashboard() {
             bkashOpenedForId.current = item._id;
             setPendingConfirmId(item._id);
             try {
-              await Linking.openURL('intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.bkash.merchantapp;end');
+              // প্রথমে 'bKash' (বড় হাতের K) দিয়ে অ্যাপ ওপেন করার চেষ্টা করবে
+              await Linking.openURL('intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.bKash.merchantapp;end');
             } catch {
               try {
-                await Linking.openURL('market://details?id=com.bkash.merchantapp');
+                // কাজ না করলে ছোট হাতের 'bkash' দিয়ে চেষ্টা করবে
+                await Linking.openURL('intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.bkash.merchantapp;end');
               } catch {
-                Alert.alert('⚠️', 'bKash Merchant খুলতে পারেনি। নম্বর কপি হয়েছে।');
+                // কোনোটিতেই কাজ না করলে প্লে-স্টোরে নিয়ে যাবে
+                try {
+                  await Linking.openURL('market://details?id=com.bKash.merchantapp');
+                } catch {
+                  Alert.alert('⚠️', 'bKash Merchant খুলতে পারেনি। নম্বর কপি হয়েছে।');
+                }
               }
             }
           },
@@ -211,7 +218,7 @@ export default function AdminDashboard() {
 
       <View style={styles.infoGrid}>
         {[
-          { label: '💰 পরিমাণ',  value: `৳${item.amount?.toLocaleString()}` },
+          { label: '💰 পরিমাণ',  value: `৳${item.amount?.toLocaleString()} `},
           { label: '📱 মেথড',    value: item.method || 'Bkash' },
           { label: '📞 নম্বর',   value: item.senderNumber || '-' },
           { label: '🔖 TrxID',   value: item.trxId || '-', highlight: true },
