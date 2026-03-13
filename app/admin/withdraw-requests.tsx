@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   Linking,
   RefreshControl,
@@ -37,8 +38,23 @@ export default function AdminWithdrawRequests() {
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionId,   setActionId]   = useState<string | null>(null);
-  // ✅ NEW: যে item এর জন্য bKash খোলা হয়েছে সেটা track করা
-  const [pendingConfirmItem, setPendingConfirmItem] = useState<any | null>(null);
+  const [pendingConfirmItem, setPendingConfirmItem] = useState<string | null>(null);
+
+  // ✅ FIX: AppState দিয়ে bKash থেকে ফিরলে Confirm বাটন দেখাবে
+  const appState = useRef(AppState.currentState);
+  const bkashOpenedForItem = useRef<string | null>(null);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', nextState => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        if (bkashOpenedForItem.current) {
+          setPendingConfirmItem(bkashOpenedForItem.current);
+        }
+      }
+      appState.current = nextState;
+    });
+    return () => sub.remove();
+  }, []);
 
   const fetchRequests = async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -76,48 +92,39 @@ export default function AdminWithdrawRequests() {
     }
   };
 
-  // ✅ Auto bKash API দিয়ে পাঠায়
-  const handleAutoApprove = (item: any) => {
-    Alert.alert(
-      '⚡ Auto bKash',
-      `${item.amount} BDT পাঠাবেন ${item.number} তে?\n(bKash API দিয়ে স্বয়ংক্রিয়ভাবে পাঠাবে)`,
-      [
-        { text: 'না', style: 'cancel' },
-        { text: 'হ্যাঁ, পাঠান', onPress: () => doAction('/withdraw/admin/auto-approve', item._id) },
-      ]
-    );
-  };
-
-  // ✅ FIX: Manual approve — bKash Merchant খুলবে
-  // Admin নিজে টাকা পাঠানোর পর ফিরে এসে "Confirm" বাটন চাপবে
+  // ✅ FIX: নম্বর কপি + bKash Merchant খোলা
   const handleManualApprove = async (item: any) => {
-    // ১. নম্বর কপি করে দাও
     try {
       await Clipboard.setStringAsync(item.number);
     } catch {}
 
     Alert.alert(
       '💸 ম্যানুয়াল পেমেন্ট',
-      `নম্বর কপি হয়েছে ✅\n\n📱 ${item.method}: ${item.number}\n💰 পরিমাণ: ${item.amount} টাকা\n\nbKash Merchant অ্যাপ খুলে টাকা পাঠান।\nটাকা পাঠানো হলে ফিরে এসে "✅ Confirm" বাটন চাপুন।`,
+      `✅ নম্বর কপি হয়েছে!\n\n📱 ${item.method}: ${item.number}\n💰 পরিমাণ: ${item.amount} টাকা\n\nbKash Merchant অ্যাপ খুলে টাকা পাঠান।\nটাকা পাঠানো হলে ফিরে এসে "✅ Confirm" বাটন চাপুন।`,
       [
         { text: 'বাতিল', style: 'cancel' },
         {
           text: '📲 bKash Merchant খুলুন',
-          onPress: () => {
-            // bKash Merchant অ্যাপ খোলার চেষ্টা
-            Linking.openURL('com.bkash.merchant.merchantapp://').catch(() => {
-              Linking.openURL('https://play.google.com/store/apps/details?id=com.bkash.merchant');
-            });
-            // ✅ FIX: setTimeout নেই — item টা pending confirm এ রাখো
-            // Admin ফিরে এসে card এ "✅ Confirm" বাটন দেখবে
+          onPress: async () => {
+            bkashOpenedForItem.current = item._id;
             setPendingConfirmItem(item._id);
+
+            // ✅ FIX: সঠিক intent দিয়ে bKash Merchant খোলা
+            try {
+              await Linking.openURL('intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.bkash.merchantapp;end');
+            } catch {
+              try {
+                await Linking.openURL('market://details?id=com.bkash.merchantapp');
+              } catch {
+                Alert.alert('⚠️', 'bKash Merchant খুলতে পারেনি। নম্বর কপি হয়েছে — ম্যানুয়ালি পাঠান।');
+              }
+            }
           },
         },
       ]
     );
   };
 
-  // ✅ Admin ফিরে এসে এই বাটন চাপবে
   const handleConfirmSent = (item: any) => {
     Alert.alert(
       '✅ নিশ্চিত করুন',
@@ -127,6 +134,7 @@ export default function AdminWithdrawRequests() {
         {
           text: 'হ্যাঁ, Confirm ✅',
           onPress: () => {
+            bkashOpenedForItem.current = null;
             setPendingConfirmItem(null);
             doAction('/withdraw/admin/manual-approve', item._id);
           },
@@ -135,7 +143,6 @@ export default function AdminWithdrawRequests() {
     );
   };
 
-  // ✅ Reject — টাকা user এর কাছে ফেরত যাবে
   const handleReject = (item: any) => {
     Alert.alert(
       '❌ রিকোয়েস্ট বাতিল করবেন?',
@@ -151,6 +158,7 @@ export default function AdminWithdrawRequests() {
     );
   };
 
+  // ✅ নম্বরে চাপ দিলে কপি হবে
   const copyNumber = async (number: string) => {
     try {
       await Clipboard.setStringAsync(number);
@@ -161,18 +169,17 @@ export default function AdminWithdrawRequests() {
   };
 
   const RequestCard = ({ item }: any) => {
-    const isProcessing  = actionId === item._id;
+    const isProcessing     = actionId === item._id;
     const isPendingConfirm = pendingConfirmItem === item._id;
-    const statusInfo    = STATUS_COLOR[item.status] || STATUS_COLOR.Pending;
-    const methodColor   = METHOD_COLOR[item.method] || '#333';
-    const amountStr     = String(Math.floor(Number(item.amount) || 0));
-    const balanceStr    = String(Math.floor(Number(item.userId?.balance ?? item.userId?.wallet ?? 0)));
-    const dateStr       = item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-';
+    const statusInfo       = STATUS_COLOR[item.status] || STATUS_COLOR.Pending;
+    const methodColor      = METHOD_COLOR[item.method] || '#333';
+    const amountStr        = String(Math.floor(Number(item.amount) || 0));
+    const balanceStr       = String(Math.floor(Number(item.userId?.balance ?? item.userId?.wallet ?? 0)));
+    const dateStr          = item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-';
 
     return (
       <View style={styles.card}>
 
-        {/* ── Card Header ── */}
         <View style={styles.cardHeader}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
@@ -190,7 +197,6 @@ export default function AdminWithdrawRequests() {
           </View>
         </View>
 
-        {/* ── Details ── */}
         <View style={styles.detailsBox}>
           <View style={styles.detailRow}>
             <Ionicons name="cash-outline" size={16} color="#64748b" />
@@ -204,15 +210,18 @@ export default function AdminWithdrawRequests() {
               <Text style={[styles.methodText, { color: methodColor }]}>{item.method}</Text>
             </View>
           </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="call-outline" size={16} color="#64748b" />
-            <Text style={styles.detailLabel}>নম্বর</Text>
-            <TouchableOpacity onPress={() => copyNumber(item.number)}>
+
+          {/* ✅ নম্বরে চাপ দিলে কপি হবে */}
+          <TouchableOpacity onPress={() => copyNumber(item.number)}>
+            <View style={styles.detailRow}>
+              <Ionicons name="call-outline" size={16} color="#64748b" />
+              <Text style={styles.detailLabel}>নম্বর (চাপুন)</Text>
               <Text style={[styles.detailValue, { color: '#0984E3', textDecorationLine: 'underline' }]}>
                 {item.number} 📋
               </Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+          </TouchableOpacity>
+
           <View style={styles.detailRow}>
             <Ionicons name="wallet-outline" size={16} color="#64748b" />
             <Text style={styles.detailLabel}>ব্যালেন্স</Text>
@@ -231,17 +240,8 @@ export default function AdminWithdrawRequests() {
               <Text style={[styles.detailValue, { color: '#00B894' }]}>{item.bkashTrxID}</Text>
             </View>
           ) : null}
-
-          {item.manualNote ? (
-            <View style={styles.detailRow}>
-              <Ionicons name="hand-right-outline" size={16} color="#6C5CE7" />
-              <Text style={styles.detailLabel}>Note</Text>
-              <Text style={[styles.detailValue, { color: '#6C5CE7' }]}>{item.manualNote}</Text>
-            </View>
-          ) : null}
         </View>
 
-        {/* ── Action Buttons (শুধু Pending এ দেখাবে) ── */}
         {item.status === 'Pending' ? (
           isProcessing ? (
             <View style={styles.processingBox}>
@@ -250,10 +250,9 @@ export default function AdminWithdrawRequests() {
             </View>
           ) : (
             <View>
-              {/* ✅ bKash খোলার পরে "Confirm" বাটন দেখাবে */}
               {isPendingConfirm ? (
                 <TouchableOpacity
-                  style={[styles.btnFull, { backgroundColor: '#00B894', marginBottom: 8 }]}
+                  style={[styles.btnFull, { backgroundColor: '#00B894' }]}
                   onPress={() => handleConfirmSent(item)}
                   activeOpacity={0.8}
                 >
@@ -261,58 +260,39 @@ export default function AdminWithdrawRequests() {
                   <Text style={styles.btnText}>✅ টাকা পাঠানো হয়েছে — Confirm করুন</Text>
                 </TouchableOpacity>
               ) : (
-                /* Auto + Manual বাটন */
-                <View style={styles.btnRow}>
-                  <TouchableOpacity
-                    style={[styles.btn, { backgroundColor: '#0984E3' }]}
-                    onPress={() => handleAutoApprove(item)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="flash-outline" size={16} color="white" />
-                    <Text style={styles.btnText}>Auto bKash</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.btn, { backgroundColor: '#6C5CE7' }]}
-                    onPress={() => handleManualApprove(item)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="hand-right-outline" size={16} color="white" />
-                    <Text style={styles.btnText}>পাঠিয়ে দেন</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  style={[styles.btnFull, { backgroundColor: '#6C5CE7' }]}
+                  onPress={() => handleManualApprove(item)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="hand-right-outline" size={16} color="white" />
+                  <Text style={styles.btnText}>💸 পাঠিয়ে দেন (bKash Merchant)</Text>
+                </TouchableOpacity>
               )}
 
-              {/* Reject বাটন সবসময় দেখাবে */}
               <TouchableOpacity
-                style={[styles.btnFull, { backgroundColor: '#EF4444', marginTop: 8 }]}
+                style={[styles.btnFull, { backgroundColor: '#EF4444' }]}
                 onPress={() => handleReject(item)}
                 activeOpacity={0.8}
               >
                 <Ionicons name="close-circle-outline" size={16} color="white" />
-                <Text style={styles.btnText}>বাতিল (Refund)</Text>
+                <Text style={styles.btnText}>❌ বাতিল (টাকা ফেরত)</Text>
               </TouchableOpacity>
             </View>
           )
         ) : null}
 
-        {/* Approved banner */}
         {item.status === 'Approved' ? (
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={18} color="#00B894" />
-            <Text style={styles.successBannerText}>
-              পেমেন্ট সম্পন্ন হয়েছে ✅
-            </Text>
+            <Text style={styles.successBannerText}>পেমেন্ট সম্পন্ন হয়েছে ✅</Text>
           </View>
         ) : null}
 
-        {/* Rejected banner */}
         {item.status === 'Rejected' ? (
           <View style={styles.rejectBanner}>
             <Ionicons name="close-circle" size={18} color="#E17055" />
-            <Text style={styles.rejectBannerText}>
-              বাতিল — টাকা ফেরত দেওয়া হয়েছে ❌
-            </Text>
+            <Text style={styles.rejectBannerText}>বাতিল — টাকা ফেরত দেওয়া হয়েছে ❌</Text>
           </View>
         ) : null}
 
@@ -328,7 +308,6 @@ export default function AdminWithdrawRequests() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
 
-      {/* ── Header ── */}
       <LinearGradient colors={['#1e293b', '#334155']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={22} color="white" />
@@ -342,7 +321,6 @@ export default function AdminWithdrawRequests() {
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* ── Stats ── */}
       <View style={styles.statsRow}>
         {[
           { label: 'Pending',  count: pendingCount,  color: '#F59E0B' },
@@ -356,7 +334,6 @@ export default function AdminWithdrawRequests() {
         ))}
       </View>
 
-      {/* ── List ── */}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#0984E3" />
@@ -384,49 +361,47 @@ export default function AdminWithdrawRequests() {
 }
 
 const styles = StyleSheet.create({
-  container:      { flex: 1, backgroundColor: '#f1f5f9' },
-  header:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 18 },
-  iconBtn:        { padding: 6 },
-  headerTitle:    { fontSize: 18, fontWeight: 'bold', color: 'white', textAlign: 'center' },
-  headerSub:      { fontSize: 12, color: '#94a3b8', marginTop: 2, textAlign: 'center' },
+  container:         { flex: 1, backgroundColor: '#f1f5f9' },
+  header:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 18 },
+  iconBtn:           { padding: 6 },
+  headerTitle:       { fontSize: 18, fontWeight: 'bold', color: 'white', textAlign: 'center' },
+  headerSub:         { fontSize: 12, color: '#94a3b8', marginTop: 2, textAlign: 'center' },
 
-  statsRow:       { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
-  statCard:       { flex: 1, backgroundColor: 'white', borderRadius: 12, padding: 14, borderLeftWidth: 4, elevation: 2 },
-  statCount:      { fontSize: 24, fontWeight: 'bold' },
-  statLabel:      { fontSize: 11, color: '#64748b', marginTop: 2 },
+  statsRow:          { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  statCard:          { flex: 1, backgroundColor: 'white', borderRadius: 12, padding: 14, borderLeftWidth: 4, elevation: 2 },
+  statCount:         { fontSize: 24, fontWeight: 'bold' },
+  statLabel:         { fontSize: 11, color: '#64748b', marginTop: 2 },
 
-  listContent:    { padding: 16, paddingBottom: 30 },
-  card:           { backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 14, elevation: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 } },
-  cardHeader:     { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  avatarCircle:   { width: 44, height: 44, borderRadius: 22, backgroundColor: '#0984E3', justifyContent: 'center', alignItems: 'center' },
-  avatarText:     { color: 'white', fontWeight: 'bold', fontSize: 18 },
-  userName:       { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
-  userEmail:      { fontSize: 12, color: '#64748b', marginTop: 2 },
-  statusBadge:    { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  statusText:     { fontSize: 12, fontWeight: '700' },
+  listContent:       { padding: 16, paddingBottom: 30 },
+  card:              { backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 14, elevation: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 } },
+  cardHeader:        { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  avatarCircle:      { width: 44, height: 44, borderRadius: 22, backgroundColor: '#0984E3', justifyContent: 'center', alignItems: 'center' },
+  avatarText:        { color: 'white', fontWeight: 'bold', fontSize: 18 },
+  userName:          { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
+  userEmail:         { fontSize: 12, color: '#64748b', marginTop: 2 },
+  statusBadge:       { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  statusText:        { fontSize: 12, fontWeight: '700' },
 
-  detailsBox:     { backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, gap: 10, marginBottom: 14, borderWidth: 1, borderColor: '#e2e8f0' },
-  detailRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  detailLabel:    { flex: 1, fontSize: 13, color: '#64748b' },
-  detailValue:    { fontSize: 13, fontWeight: '600', color: '#1e293b' },
-  detailAmount:   { fontSize: 17, fontWeight: 'bold', color: '#059669' },
-  methodBadge:    { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
-  methodText:     { fontSize: 13, fontWeight: '700' },
+  detailsBox:        { backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, gap: 10, marginBottom: 14, borderWidth: 1, borderColor: '#e2e8f0' },
+  detailRow:         { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailLabel:       { flex: 1, fontSize: 13, color: '#64748b' },
+  detailValue:       { fontSize: 13, fontWeight: '600', color: '#1e293b' },
+  detailAmount:      { fontSize: 17, fontWeight: 'bold', color: '#059669' },
+  methodBadge:       { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 },
+  methodText:        { fontSize: 13, fontWeight: '700' },
 
-  btnRow:         { flexDirection: 'row', gap: 10 },
-  btn:            { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 12, gap: 6 },
-  btnFull:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 12, gap: 6 },
-  btnText:        { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  btnFull:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 12, gap: 6, marginBottom: 8 },
+  btnText:           { color: 'white', fontWeight: 'bold', fontSize: 14 },
 
-  processingBox:  { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, paddingVertical: 14 },
-  processingText: { color: '#0984E3', fontWeight: '600' },
+  processingBox:     { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, paddingVertical: 14 },
+  processingText:    { color: '#0984E3', fontWeight: '600' },
 
-  successBanner:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8FDF5', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#00B894' + '40' },
+  successBanner:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8FDF5', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#00B89440' },
   successBannerText: { color: '#00B894', fontWeight: '700', fontSize: 14 },
-  rejectBanner:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#E17055' + '40' },
-  rejectBannerText: { color: '#E17055', fontWeight: '700', fontSize: 14 },
+  rejectBanner:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#E1705540' },
+  rejectBannerText:  { color: '#E17055', fontWeight: '700', fontSize: 14 },
 
-  centered:       { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
-  loadingText:    { marginTop: 12, color: '#64748b', fontSize: 14 },
-  emptyText:      { marginTop: 14, fontSize: 16, color: '#64748b' },
+  centered:          { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
+  loadingText:       { marginTop: 12, color: '#64748b', fontSize: 14 },
+  emptyText:         { marginTop: 14, fontSize: 16, color: '#64748b' },
 });
