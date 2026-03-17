@@ -27,8 +27,6 @@ const MIN_WITHDRAW = 400;
 
 const METHODS = [
   { name: 'Bkash',  color: '#E2136E', icon: '📱' },
-  { name: 'Nagad',  color: '#F7941D', icon: '💛' },
-  { name: 'Rocket', color: '#8B008B', icon: '🚀' },
 ];
 
 function parseErrorMessage(error: any): string {
