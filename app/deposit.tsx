@@ -35,8 +35,14 @@ export default function DepositScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   // অ্যাডমিন নাম্বার (যেখানে টাকা পাঠাবে)
-  const adminNumber ="01636257147";
-   const adminNumber ="01812323466";
+  const [adminNumber, setAdminNumber] = useState('');
+
+useEffect(() => {
+  fetch('https://liora-backend-nmx8.onrender.com/api/config/active-number')
+    .then(res => res.json())
+    .then(data => setAdminNumber(data.number))
+    .catch(() => setAdminNumber('01636257147'));
+}, []);
 
 
   const handleDeposit = () => {
