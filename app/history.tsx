@@ -3,19 +3,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    RefreshControl,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 
 // ✅ সরাসরি fetch — api.js import নেই
-const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
+const API_URL = 'https://liora-backend-nmx8.onrender.com/api';
 
 const TYPE_CONFIG: any = {
   withdraw: { icon: 'arrow-up-circle-outline',   color: '#E17055', label: 'উইথড্র'      },

@@ -4,21 +4,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  AppState,
-  FlatList,
-  Linking,
-  RefreshControl,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    AppState,
+    FlatList,
+    Linking,
+    RefreshControl,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
-const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
+const API_URL = 'https://liora-backend-nmx8.onrender.com/api';
 
 const STATUS_COLOR: any = {
   Pending:  { bg: '#FFF8E1', text: '#F59E0B', label: '⏳ Pending'  },

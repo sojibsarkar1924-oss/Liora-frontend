@@ -3,7 +3,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AuthContext, AuthProvider } from '../context/AuthContext';
 
-const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
+const API_URL = 'https://liora-backend-nmx8.onrender.com/api';
 
 function MaintenanceScreen() {
   const fadeAnim = React.useRef(new Animated.Value(0)).current;

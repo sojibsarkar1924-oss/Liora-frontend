@@ -3,21 +3,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  Dimensions,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 
 // ✅ FIXED: আলাদা import নেই — সরাসরি fetch ব্যবহার
-const API_URL = 'https://liora-backend-production-74f1.up.railway.app/api';
+const API_URL = 'https://liora-backend-nmx8.onrender.com/api';
 
 const { width } = Dimensions.get('window');
 
