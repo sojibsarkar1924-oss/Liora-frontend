@@ -23,7 +23,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { requestWithdraw } from '../services/api';
 
-const MIN_WITHDRAW = 400;
+const MIN_WITHDRAW = 850;
 
 const METHODS = [
   { name: 'Bkash',  color: '#E2136E', icon: '📱' },
@@ -250,7 +250,7 @@ export default function WalletScreen() {
 
             <Text style={styles.label}>দ্রুত সিলেক্ট</Text>
             <View style={styles.quickAmountRow}>
-              {[400, 500, 1000, 2000].map((val) => (
+              {[850, 1000,1500, 2000].map((val) => (
                 <TouchableOpacity
                   key={val}
                   style={[styles.quickBtn, amount === String(val) && styles.quickBtnActive]}
