@@ -57,7 +57,7 @@ export default function AdminDashboard() {
       const wdList  = Array.isArray(wdData?.withdraws) ? wdData.withdraws :
                 Array.isArray(wdData?.data)       ? wdData.data      :
                 Array.isArray(wdData)             ? wdData           : [];
-      setPayments(payList);
+    setPayments(payList.filter((p: any) => p.status === 'Pending'));
       setWithdraws(wdList);
       setStats({
         pendingPayments:  payList.filter((p: any) => p.status === 'Pending').length,
