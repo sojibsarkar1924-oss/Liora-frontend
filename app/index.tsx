@@ -10,10 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { StartAppAds } from 'react-native-startapp-ads';
 import { AuthContext } from "../context/AuthContext";
 
-StartAppAds.init('204940666');
 export default function LoginScreen() {
   const router = useRouter();
   // ✅ FIXED: সরাসরি API call না করে AuthContext এর login() ব্যবহার করা
