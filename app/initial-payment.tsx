@@ -21,11 +21,7 @@ import { submitDeposit } from '../services/api';
 
 // ✅ প্যাকেজ লিস্ট — tasksController.js এর সাথে মিল
 const PACKAGES = [
-  { id: 'bronze',   name: 'Bronze',   price: 1350,  daily: 48,  tasks: 4,  perTask: 12,  color: '#CD7F32' },
-  { id: 'silver',   name: 'Silver',   price: 2700,  daily: 108, tasks: 6,  perTask: 18,  color: '#C0C0C0' },
-  { id: 'gold',     name: 'Gold',     price: 5400,  daily: 224, tasks: 8,  perTask: 28,  color: '#FFD700' },
-  { id: 'platinum', name: 'Platinum', price: 10800, daily: 460, tasks: 10, perTask: 46,  color: '#E5E4E2' },
-  { id: 'diamond',  name: 'Diamond',  price: 21600, daily: 960, tasks: 12, perTask: 80,  color: '#B9F2FF' },
+  { id: 'Premium',  name: 'Premium',  price: 400, daily: 27, tasks: 9, perTask: 3,  color: '#B9F2FF' },
 ];
 
 // ✅ আপনার বিকাশ মার্চেন্ট নম্বর এখানে দিন

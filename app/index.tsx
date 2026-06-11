@@ -14,23 +14,28 @@ import { AuthContext } from "../context/AuthContext";
 
 export default function LoginScreen() {
   const router = useRouter();
-  // ✅ FIXED: সরাসরি API call না করে AuthContext এর login() ব্যবহার করা
   const { login } = useContext(AuthContext) as any;
 
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-  const [loading,  setLoading]  = useState(false);
+  // ✅ email বাদ — referralCode দিয়ে login
+  const [password,     setPassword]     = useState("");
+  const [loading,      setLoading]      = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("ত্রুটি", "ইমেইল এবং পাসওয়ার্ড দিন।");
+    // ✅ Validation — referralCode চেক
+    if (!referralCode.trim()) {
+      Alert.alert("Error", "Please enter your referral code.");
+      return;
+    }
+    if (!password) {
+      Alert.alert("Error", "Please enter your password.");
       return;
     }
 
     setLoading(true);
     try {
-      // ✅ AuthContext.login() — সঠিক key তে save করে, state আপডেট করে
-      const user = await login(email.trim(), password);
+      // ✅ referralCode uppercase করে পাঠাও — AuthContext এর login() এ
+      // AuthContext → loginUser(referralCode, password) → backend
+      const user = await login(referralCode.trim().toUpperCase(), password);
 
       const role   = user?.role   || 'user';
       const status = user?.status || 'pending';
@@ -42,16 +47,16 @@ export default function LoginScreen() {
       } else {
         // pending — payment page
         Alert.alert(
-          "একাউন্ট পেন্ডিং",
-          "আপনার একাউন্ট সক্রিয় করতে পেমেন্ট করুন।"
+          "Account Pending",
+          "Please make payment to activate your account."
         );
         router.replace("/initial-payment");
       }
 
     } catch (error: any) {
       Alert.alert(
-        "লগইন ব্যর্থ",
-        error?.msg || error?.message || "ইমেইল বা পাসওয়ার্ড ভুল।"
+        "Login Failed",
+        error?.msg || error?.message || "Referral code or password is incorrect."
       );
     } finally {
       setLoading(false);
@@ -62,31 +67,45 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Liora</Text>
         <Text style={styles.subtitle}>Welcome Back</Text>
       </View>
 
       <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email Address"
-          placeholderTextColor="#94a3b8"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#94a3b8"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        {/* ✅ Email Input বাদ — Referral Code Input */}
+        <View style={styles.inputWrapper}>
+          <Text style={styles.inputLabel}>Your Referral Code</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. AB3X9K7M"
+            placeholderTextColor="#94a3b8"
+            value={referralCode}
+            onChangeText={(text) => setReferralCode(text.toUpperCase())}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+          <Text style={styles.inputHint}>
+            The 8-character code shown in your profile
+          </Text>
+        </View>
 
+        {/* Password Input */}
+        <View style={styles.inputWrapper}>
+          <Text style={styles.inputLabel}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            placeholderTextColor="#94a3b8"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+
+        {/* Login Button */}
         <TouchableOpacity
           style={[styles.button, loading && { opacity: 0.7 }]}
           onPress={handleLogin}
@@ -100,12 +119,14 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
+        {/* Signup Link */}
         <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>একাউন্ট নেই? </Text>
+          <Text style={styles.signupText}>No account? </Text>
           <TouchableOpacity onPress={() => router.push('/signup')}>
-            <Text style={styles.signupLink}>নতুন একাউন্ট খুলুন</Text>
+            <Text style={styles.signupLink}>Create New Account</Text>
           </TouchableOpacity>
         </View>
+
       </View>
     </View>
   );
@@ -115,7 +136,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    padding: 20,
+    padding: 24,
     backgroundColor: "#f8fafc",
   },
   header: {
@@ -133,30 +154,49 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   form: { width: "100%" },
+
+  // ✅ Input wrapper with label
+  inputWrapper: {
+    marginBottom: 18,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#475569",
+    marginBottom: 6,
+  },
   input: {
     backgroundColor: "white",
     padding: 16,
     borderRadius: 12,
-    marginBottom: 15,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#e2e8f0",
     fontSize: 16,
     color: "#1e293b",
+    letterSpacing: 1,
   },
+  inputHint: {
+    fontSize: 11,
+    color: "#94a3b8",
+    marginTop: 5,
+    marginLeft: 4,
+  },
+
   button: {
     backgroundColor: "#22c55e",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 8,
     elevation: 3,
   },
   btnText: { color: "white", fontSize: 18, fontWeight: "bold" },
+
   signupContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 25,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
-  signupText: { color: '#64748b', fontSize: 15 },
-  signupLink: { color: '#2563eb', fontWeight: 'bold', fontSize: 15 },
+  signupText: { color: "#64748b", fontSize: 15 },
+  signupLink: { color: "#2563eb", fontWeight: "bold", fontSize: 15 },
 });

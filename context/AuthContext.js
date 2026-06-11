@@ -103,23 +103,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
+  // ✅ FIXED: email → referralCode
+  // index.tsx থেকে login(referralCode, password) call আসে
+  // এখানে referralCode → loginUser() তে পাঠানো হয়
+  // loginUser() → backend এ { referralCode, password } পাঠায়
+  const login = async (referralCode, password) => {
     try {
       setUserToken(null);
       setUserData(null);
       await AsyncStorage.multiRemove(['userToken', 'userData']);
 
-      const data = await loginUser(email, password);
+      // ✅ referralCode দিয়ে login
+      const data = await loginUser(referralCode, password);
 
-      // ✅ FIXED: token না থাকলেও login হবে — success চেক করো
       if (!data?.success) {
-        throw { msg: data?.msg || 'লগইন ব্যর্থ হয়েছে।' };
+        throw { msg: data?.msg || 'Login failed.' };
       }
 
       const syncedUser = syncBalance(data.user || data);
-
-      // ✅ token থাকলে set করো, না থাকলে 'logged_in' দাও
-      const token = data.token || 'logged_in';
+      const token      = data.token || 'logged_in';
 
       setUserToken(token);
       setUserData(syncedUser);

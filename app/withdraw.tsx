@@ -23,7 +23,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { requestWithdraw } from '../services/api';
 
-const MIN_WITHDRAW = 850;
+const MIN_WITHDRAW = 1290;
 
 const METHODS = [
   { name: 'Bkash',  color: '#E2136E', icon: '📱' },

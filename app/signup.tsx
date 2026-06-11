@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -19,10 +18,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { PACKAGES } from '../constants/packages';
 import { registerUser } from '../services/api';
 
-const { width } = Dimensions.get('window');
+const MEMBERSHIP_PRICE = 400;
 
 const Colors = {
   bgStart: '#C8DFF7',
@@ -37,9 +35,6 @@ const Colors = {
   border:  'rgba(255,255,255,0.80)',
 };
 
-const BONUS_PER_MEMBER = 10;
-
-// ✅ InputField কে component এর বাইরে নেওয়া হয়েছে — এটাই মূল সমাধান
 const InputField = ({
   icon, placeholder, value, onChangeText,
   keyboardType = 'default' as any,
@@ -47,7 +42,7 @@ const InputField = ({
   secure = false, showToggle = false, onToggle,
   hint,
 }: any) => (
-  <View>
+  <View style={{ marginBottom: 14 }}>
     <View style={styles.inputWrapper}>
       <View style={styles.inputIconBg}>
         <Ionicons name={icon} size={18} color={Colors.blue} />
@@ -87,19 +82,15 @@ const InputField = ({
 export default function SignupScreen() {
   const router = useRouter();
 
-  const [name,            setName]            = useState('');
-  const [email,           setEmail]           = useState('');
-  const [password,        setPassword]        = useState('');
-  const [showPass,        setShowPass]        = useState(false);
-  const [referralCode,    setReferralCode]    = useState('');
-  const [selectedPackage, setSelectedPackage] = useState<any>(null);
-  const [loading,         setLoading]         = useState(false);
-  const [step,            setStep]            = useState(1);
+  const [name,         setName]         = useState('');
+  const [password,     setPassword]     = useState('');
+  const [showPass,     setShowPass]     = useState(false);
+  const [referralCode, setReferralCode] = useState('');
+  const [loading,      setLoading]      = useState(false);
 
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const logoScale = useRef(new Animated.Value(0.6)).current;
-  const stepAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -109,36 +100,24 @@ export default function SignupScreen() {
     ]).start();
   }, []);
 
-  const goToStep = (s: number) => {
-    Animated.sequence([
-      Animated.timing(stepAnim, { toValue: 40, duration: 150, useNativeDriver: true }),
-      Animated.timing(stepAnim, { toValue: 0,  duration: 300, useNativeDriver: true }),
-    ]).start();
-    setStep(s);
-  };
-
-  const handleNextStep = () => {
-    if (!name.trim())                         return Alert.alert('⚠️', 'আপনার নাম দিন।');
-    if (!email.trim() || !email.includes('@')) return Alert.alert('⚠️', 'সঠিক ইমেইল দিন।');
-    if (password.length < 6)                  return Alert.alert('⚠️', 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর।');
-    if (!referralCode.trim())                 return Alert.alert('⚠️', 'রেফার কোড দিন।');
-    goToStep(2);
+  const validate = () => {
+    if (!name.trim())          { Alert.alert('Warning', 'Your full name is required.');     return false; }
+    if (password.length < 6)   { Alert.alert('Warning', 'Password must be 6+ characters.'); return false; }
+    if (!referralCode.trim())  { Alert.alert('Warning', 'Referral code is required.');      return false; }
+    return true;
   };
 
   const handleSignup = async () => {
-    if (!selectedPackage) {
-      return Alert.alert('⚠️', 'একটি প্যাকেজ বেছে নিন।');
-    }
+    if (!validate()) return;
     setLoading(true);
-    try {
-      const response = await registerUser({
-        name:           name.trim(),
-        email:          email.trim(),
-        password,
-        referralCode:   referralCode.toUpperCase().trim(),
-        packageDetails: selectedPackage,
-      });
 
+    try {
+      // ✅ email নেই — শুধু name, password, referralCode
+      const response = await registerUser({
+  name:         name.trim(),
+  password,
+  referralCode: referralCode.toUpperCase().trim(),
+}) as any;
       if (response.token) {
         await AsyncStorage.setItem('userToken', response.token);
       }
@@ -151,24 +130,31 @@ export default function SignupScreen() {
         }));
       }
 
+      // ✅ FIX: string concatenation — Bengali template literal encoding সমস্যা নেই
+      const loginCode = response.user?.referralCode || '';
+      const alertMsg =
+        '\u09B8\u09CD\u09AC\u09BE\u0997\u09A4\u09AE ' + name + '!\n\n' +
+        '\u0986\u09AA\u09A8\u09BE\u09B0 \u09B2\u0997\u0987\u09A8 \u0995\u09CB\u09A1:\n' +
+        '\uD83D\uDCCC ' + loginCode + '\n\n' +
+        '\u26A0\uFE0F \u098F\u0987 \u0995\u09CB\u09A1\u099F\u09BF \u09B8\u0982\u09B0\u0995\u09CD\u09B7\u09A3 \u0995\u09B0\u09C1\u09A8 \u2014 login \u098F \u09B2\u09BE\u0997\u09AC\u09C7!\n\n' +
+        '\u098F\u0996\u09A8 \u09F3' + MEMBERSHIP_PRICE + ' \u09AA\u09C7\u09AE\u09C7\u09A8\u09CD\u099F \u0995\u09B0\u09C1\u09A8\u0964';
+
       Alert.alert(
-        '🎉 রেজিস্ট্রেশন সফল!',
-        `স্বাগতম ${name}!\n\nএকাউন্ট সক্রিয় করতে প্যাকেজ পেমেন্ট করুন।`,
+        'Registration Successful!',
+        alertMsg,
         [{
-          text: 'পেমেন্ট করুন →',
+          text: 'Payment Now',
           onPress: () => router.replace({
             pathname: '/initial-payment',
-            params: {
-              amount:    selectedPackage.price,
-              packageId: selectedPackage.id,
-            },
+            params:   { amount: MEMBERSHIP_PRICE },
           } as any),
         }]
       );
+
     } catch (error: any) {
       Alert.alert(
-        '❌ রেজিস্ট্রেশন ব্যর্থ',
-        error?.msg || error?.message || 'সার্ভারে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
+        'Registration Failed',
+        error?.msg || error?.message || 'Server error. Please try again.'
       );
     } finally {
       setLoading(false);
@@ -180,213 +166,130 @@ export default function SignupScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.bgStart} />
       <SafeAreaView style={{ flex: 1 }}>
 
-        {/* হেডার */}
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <TouchableOpacity
-            onPress={() => step === 2 ? goToStep(1) : router.back()}
-            style={styles.backBtn}
-          >
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {step === 1 ? '✨ নতুন একাউন্ট' : '📦 প্যাকেজ বেছে নিন'}
-          </Text>
+          <Text style={styles.headerTitle}>New Account</Text>
           <View style={{ width: 44 }} />
-        </Animated.View>
-
-        {/* স্টেপ ইন্ডিকেটর */}
-        <Animated.View style={[styles.stepRow, { opacity: fadeAnim }]}>
-          {[
-            { num: '১', label: 'তথ্য',    active: true },
-            { num: '২', label: 'প্যাকেজ', active: step === 2 },
-          ].map((s, i) => (
-            <React.Fragment key={i}>
-              {i > 0 && (
-                <View style={[styles.stepLine, { backgroundColor: s.active ? Colors.blue : '#CBD5E1' }]} />
-              )}
-              <View style={styles.stepItem}>
-                <View style={[styles.stepCircle, { backgroundColor: s.active ? Colors.blue : '#CBD5E1' }]}>
-                  <Text style={styles.stepNum}>{s.num}</Text>
-                </View>
-                <Text style={[styles.stepLabel, { color: s.active ? Colors.blue : '#CBD5E1' }]}>
-                  {s.label}
-                </Text>
-              </View>
-            </React.Fragment>
-          ))}
         </Animated.View>
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: stepAnim }] }}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
-              {/* ============ স্টেপ ১: তথ্য ============ */}
-              {step === 1 && (
-                <View>
-                  {/* লোগো */}
-                  <View style={styles.logoCard}>
-                    <Animated.View style={{ transform: [{ scale: logoScale }] }}>
-                      <LinearGradient
-                        colors={[Colors.blue, Colors.purple]}
-                        style={styles.logoGradient}
-                      >
-                        <Ionicons name="person-add" size={36} color="white" />
-                      </LinearGradient>
-                    </Animated.View>
-                    <Text style={styles.logoTitle}>যোগ দিন</Text>
-                    <Text style={styles.logoSub}>রেফার কোড দিয়ে শুরু</Text>
-                  </View>
-
-                  {/* টিম বোনাস ইনফো */}
-                  <View style={styles.bonusInfoCard}>
-                    <Text style={styles.bonusInfoTitle}>🎁 টিম বোনাস সিস্টেম</Text>
-                    <Text style={styles.bonusInfoText}>
-                      প্রতিটি নতুন সদস্যের জন্য ৳{BONUS_PER_MEMBER} বোনাস পাবেন{'\n'}
-                      ১ জন = ৳১০ • ১০ জন = ৳১০০ • ১০০ জন = ৳১০০০
-                    </Text>
-                  </View>
-
-                  {/* ফর্ম */}
-                  <View style={styles.glassCard}>
-                    <Text style={styles.sectionTitle}>📋 ব্যক্তিগত তথ্য</Text>
-
-                    <Text style={styles.label}>আপনার নাম</Text>
-                    <InputField
-                      icon="person-outline"
-                      placeholder="পুরো নাম লিখুন"
-                      value={name}
-                      onChangeText={setName}
-                      autoCapitalize="words"
-                    />
-
-                    <Text style={styles.label}>ইমেইল</Text>
-                    <InputField
-                      icon="mail-outline"
-                      placeholder="example@gmail.com"
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
-                    />
-
-                    <Text style={styles.label}>পাসওয়ার্ড</Text>
-                    <InputField
-                      icon="lock-closed-outline"
-                      placeholder="কমপক্ষে ৬ অক্ষর"
-                      value={password}
-                      onChangeText={setPassword}
-                      secure={!showPass}
-                      showToggle
-                      onToggle={() => setShowPass(!showPass)}
-                    />
-
-                    <Text style={styles.label}>রেফার কোড (বাধ্যতামূলক)</Text>
-                    <InputField
-                      icon="gift-outline"
-                      placeholder="রেফার কারির কোড দিন"
-                      value={referralCode}
-                      onChangeText={setReferralCode}
-                      autoCapitalize="characters"
-                      hint="যিনি আপনাকে invite করেছেন তার রেফার কোড দিন।"
-                    />
-                  </View>
-
-                  {/* পরের ধাপ বাটন */}
-                  <TouchableOpacity
-                    onPress={handleNextStep}
-                    activeOpacity={0.85}
-                    style={styles.mainBtn}
+              {/* Logo */}
+              <View style={styles.logoCard}>
+                <Animated.View style={{ transform: [{ scale: logoScale }] }}>
+                  <LinearGradient
+                    colors={[Colors.blue, Colors.purple]}
+                    style={styles.logoGradient}
                   >
-                    <LinearGradient
-                      colors={[Colors.blue, Colors.purple]}
-                      style={styles.mainBtnGradient}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    >
-                      <Text style={styles.mainBtnText}>পরের ধাপ</Text>
-                      <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 8 }} />
-                    </LinearGradient>
-                  </TouchableOpacity>
+                    <Ionicons name="person-add" size={36} color="white" />
+                  </LinearGradient>
+                </Animated.View>
+                <Text style={styles.logoTitle}>Join Liora</Text>
+                <Text style={styles.logoSub}>Start with a referral code</Text>
+              </View>
 
-                  <TouchableOpacity
-                    onPress={() => router.replace('/login' as any)}
-                    style={styles.loginLink}
-                  >
-                    <Text style={styles.loginLinkText}>
-                      আগে থেকে একাউন্ট আছে?{' '}
-                      <Text style={{ color: Colors.blue, fontWeight: 'bold' }}>লগইন করুন</Text>
-                    </Text>
-                  </TouchableOpacity>
+              {/* Premium Package Info */}
+              <View style={styles.premiumCard}>
+                <View style={styles.premiumLeft}>
+                  <Ionicons name="star" size={22} color="#F4C430" />
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={styles.premiumName}>Liora Premium</Text>
+                    <Text style={styles.premiumDesc}>Single package • All benefits</Text>
+                  </View>
                 </View>
-              )}
+                <Text style={styles.premiumPrice}>{'৳' + MEMBERSHIP_PRICE}</Text>
+              </View>
 
-              {/* ============ স্টেপ ২: প্যাকেজ ============ */}
-              {step === 2 && (
-                <View>
-                  <Text style={styles.packageHeading}>মেম্বারশিপ প্যাকেজ</Text>
-                  <Text style={styles.packageSubHeading}>
-                    প্যাকেজ কিনলে দৈনিক কাজ করে আয় করতে পারবেন
-                  </Text>
-
-                  <View style={styles.packageGrid}>
-                    {PACKAGES.map((pkg: any) => {
-                      const isSelected = selectedPackage?.id === pkg.id;
-                      return (
-                        <TouchableOpacity
-                          key={pkg.id}
-                          style={[
-                            styles.packageCard,
-                            { borderColor: isSelected ? pkg.color : 'rgba(255,255,255,0.7)' },
-                            isSelected && { backgroundColor: pkg.color + '18' },
-                          ]}
-                          onPress={() => setSelectedPackage(pkg)}
-                          activeOpacity={0.85}
-                        >
-                          {isSelected && (
-                            <View style={[styles.pkgBadge, { backgroundColor: pkg.color }]}>
-                              <Ionicons name="checkmark" size={12} color="white" />
-                            </View>
-                          )}
-                          <Text style={[styles.pkgName, { color: pkg.color }]}>{pkg.name}</Text>
-                          <Text style={styles.pkgPrice}>৳{pkg.price}</Text>
-                          <View style={styles.pkgDivider} />
-                          <View style={styles.pkgRow}>
-                            <Ionicons name="trending-up-outline" size={13} color={Colors.green} />
-                            <Text style={styles.pkgRowText}>দৈনিক ৳{pkg.dailyIncome}</Text>
-                          </View>
-                          <View style={styles.pkgRow}>
-                            <Ionicons name="checkmark-circle-outline" size={13} color={Colors.blue} />
-                            <Text style={styles.pkgRowText}>{pkg.taskCount} কাজ/দিন</Text>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={handleSignup}
-                    disabled={loading || !selectedPackage}
-                    activeOpacity={0.85}
-                    style={[styles.mainBtn, (!selectedPackage || loading) && { opacity: 0.65 }]}
-                  >
-                    <LinearGradient
-                      colors={[Colors.green, '#00CBA4']}
-                      style={styles.mainBtnGradient}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="white" size="small" />
-                      ) : (
-                        <>
-                          <Ionicons name="rocket-outline" size={20} color="white" style={{ marginRight: 8 }} />
-                          <Text style={styles.mainBtnText}>একাউন্ট তৈরি করুন</Text>
-                        </>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
+              {/* Bonus Info */}
+              <View style={styles.bonusCard}>
+                <Text style={styles.bonusTitle}>Bonus System</Text>
+                <View style={styles.bonusRow}>
+                  <Ionicons name="person" size={14} color={Colors.green} />
+                  <Text style={styles.bonusText}>Direct referral bonus: 60 taka</Text>
                 </View>
-              )}
+                <View style={styles.bonusRow}>
+                  <Ionicons name="people" size={14} color={Colors.blue} />
+                  <Text style={styles.bonusText}>Top 6 seniors get 10 taka each</Text>
+                </View>
+              </View>
+
+              {/* Form */}
+              <View style={styles.glassCard}>
+                <Text style={styles.sectionTitle}>Personal Information</Text>
+
+                <Text style={styles.label}>Full Name</Text>
+                <InputField
+                  icon="person-outline"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                />
+
+                <Text style={styles.label}>Password</Text>
+                <InputField
+                  icon="lock-closed-outline"
+                  placeholder="Minimum 6 characters"
+                  value={password}
+                  onChangeText={setPassword}
+                  secure={!showPass}
+                  showToggle
+                  onToggle={() => setShowPass(!showPass)}
+                />
+
+                <Text style={styles.label}>Referral Code (Required)</Text>
+                <InputField
+                  icon="gift-outline"
+                  placeholder="Enter inviter's code"
+                  value={referralCode}
+                  onChangeText={setReferralCode}
+                  autoCapitalize="characters"
+                  hint="Enter the referral code of the person who invited you."
+                />
+              </View>
+
+              {/* Submit */}
+              <TouchableOpacity
+                onPress={handleSignup}
+                disabled={loading}
+                activeOpacity={0.85}
+                style={[styles.mainBtn, loading && { opacity: 0.65 }]}
+              >
+                <LinearGradient
+                  colors={[Colors.green, '#00CBA4']}
+                  style={styles.mainBtnGradient}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="rocket-outline" size={20} color="white" style={{ marginRight: 8 }} />
+                      <Text style={styles.mainBtnText}>Create Account</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.replace('/login' as any)}
+                style={styles.loginLink}
+              >
+                <Text style={styles.loginLinkText}>
+                  Already have an account?{' '}
+                  <Text style={{ color: Colors.blue, fontWeight: 'bold' }}>Login</Text>
+                </Text>
+              </TouchableOpacity>
 
             </Animated.View>
           </ScrollView>
@@ -407,20 +310,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.glass, borderWidth: 1.5,
     borderColor: Colors.border, justifyContent: 'center', alignItems: 'center',
   },
-  stepRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', marginBottom: 16, gap: 8,
-  },
-  stepItem:   { alignItems: 'center', gap: 4 },
-  stepCircle: {
-    width: 32, height: 32, borderRadius: 16,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  stepNum:   { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  stepLabel: { fontSize: 11, fontWeight: '600' },
-  stepLine:  { width: 60, height: 2, borderRadius: 1, marginBottom: 16 },
   scrollContent: { padding: 20, paddingBottom: 60 },
-  logoCard:    { alignItems: 'center', marginBottom: 20 },
+  logoCard:     { alignItems: 'center', marginBottom: 20 },
   logoGradient: {
     width: 80, height: 80, borderRadius: 24,
     justifyContent: 'center', alignItems: 'center',
@@ -430,13 +321,24 @@ const styles = StyleSheet.create({
   },
   logoTitle: { fontSize: 22, fontWeight: 'bold', color: Colors.text },
   logoSub:   { fontSize: 13, color: Colors.subText, marginTop: 4 },
-  bonusInfoCard: {
-    backgroundColor: 'rgba(0,184,148,0.12)',
-    borderRadius: 16, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: 'rgba(0,184,148,0.3)',
+  premiumCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: 'rgba(108,92,231,0.10)',
+    borderRadius: 16, padding: 16, marginBottom: 12,
+    borderWidth: 1.5, borderColor: 'rgba(108,92,231,0.30)',
   },
-  bonusInfoTitle: { fontSize: 14, fontWeight: '700', color: '#00B894', marginBottom: 6 },
-  bonusInfoText:  { fontSize: 12, color: Colors.subText, lineHeight: 20 },
+  premiumLeft:  { flexDirection: 'row', alignItems: 'center' },
+  premiumName:  { fontSize: 15, fontWeight: 'bold', color: Colors.purple },
+  premiumDesc:  { fontSize: 11, color: Colors.subText, marginTop: 2 },
+  premiumPrice: { fontSize: 22, fontWeight: 'bold', color: Colors.purple },
+  bonusCard: {
+    backgroundColor: 'rgba(0,184,148,0.10)',
+    borderRadius: 16, padding: 14, marginBottom: 16,
+    borderWidth: 1, borderColor: 'rgba(0,184,148,0.25)',
+  },
+  bonusTitle: { fontSize: 13, fontWeight: '700', color: '#00B894', marginBottom: 8 },
+  bonusRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
+  bonusText:  { fontSize: 12, color: Colors.subText },
   glassCard: {
     backgroundColor: Colors.glass,
     borderWidth: 1.5, borderColor: Colors.border,
@@ -450,8 +352,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'white', borderRadius: 14,
     borderWidth: 1.5, borderColor: '#E2E8F0',
-    marginBottom: 6, paddingHorizontal: 12,
-    elevation: 2,
+    paddingHorizontal: 12, elevation: 2,
   },
   inputIconBg: {
     width: 34, height: 34, borderRadius: 10,
@@ -462,7 +363,7 @@ const styles = StyleSheet.create({
   hintBox: {
     flexDirection: 'row', alignItems: 'flex-start',
     backgroundColor: '#EFF6FF', borderRadius: 10,
-    padding: 10, gap: 6, marginBottom: 14,
+    padding: 10, gap: 6, marginTop: 6,
     borderWidth: 1, borderColor: '#BFDBFE',
   },
   hintText: { flex: 1, color: Colors.blue, fontSize: 12, lineHeight: 18 },
@@ -471,27 +372,4 @@ const styles = StyleSheet.create({
   mainBtnText:     { color: 'white', fontSize: 17, fontWeight: 'bold' },
   loginLink:     { alignItems: 'center', marginBottom: 20 },
   loginLinkText: { fontSize: 14, color: Colors.subText },
-  packageHeading:    { fontSize: 18, fontWeight: 'bold', color: Colors.text, marginBottom: 6 },
-  packageSubHeading: { fontSize: 13, color: Colors.subText, marginBottom: 20, lineHeight: 20 },
-  packageGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    justifyContent: 'space-between', gap: 12, marginBottom: 24,
-  },
-  packageCard: {
-    width: (width - 56) / 2,
-    backgroundColor: Colors.glass,
-    borderWidth: 2, borderRadius: 18,
-    padding: 16, alignItems: 'center',
-    elevation: 3, position: 'relative',
-  },
-  pkgBadge: {
-    position: 'absolute', top: 10, right: 10,
-    width: 22, height: 22, borderRadius: 11,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  pkgName:    { fontSize: 14, fontWeight: 'bold', marginBottom: 6 },
-  pkgPrice:   { fontSize: 26, fontWeight: 'bold', color: Colors.text, marginBottom: 10 },
-  pkgDivider: { width: '100%', height: 1, backgroundColor: 'rgba(0,0,0,0.06)', marginBottom: 10 },
-  pkgRow:     { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
-  pkgRowText: { fontSize: 12, color: Colors.subText, fontWeight: '600' },
 });

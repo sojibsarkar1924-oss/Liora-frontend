@@ -1,14 +1,14 @@
 const API_URL = 'https://liora-backend-nmx8.onrender.com/api';
 
 // ============================================================
-// ✅ রেজিস্ট্রেশন
+// ✅ রেজিস্ট্রেশন — email ও packageDetails বাদ
 // ============================================================
-export const registerUser = async ({ name, email, password, referralCode, packageDetails }) => {
+export const registerUser = async ({ name, password, referralCode }) => {
   try {
     const response = await fetch(`${API_URL}/auth/register`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ name, email, password, referralCode, packageDetails }),
+      body:    JSON.stringify({ name, password, referralCode }),
     });
     const data = await response.json();
     if (!response.ok || !data.success) {
@@ -21,14 +21,14 @@ export const registerUser = async ({ name, email, password, referralCode, packag
 };
 
 // ============================================================
-// ✅ লগইন
+// ✅ লগইন — email বাদ, referralCode দিয়ে login
 // ============================================================
-export const loginUser = async (email, password) => {
+export const loginUser = async (referralCode, password) => {
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email, password }),
+      body:    JSON.stringify({ referralCode, password }),
     });
     const data = await response.json();
     if (!response.ok || !data.success) {
@@ -93,7 +93,12 @@ export const requestWithdraw = async (data, token) => {
     const response = await fetch(`${API_URL}/withdraw/request`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ userId: data.userId, amount: data.amount, method: data.method, number: data.number }),
+      body:    JSON.stringify({
+        userId: data.userId,
+        amount: data.amount,
+        method: data.method,
+        number: data.number,
+      }),
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -184,7 +189,7 @@ export const getAdminPayments = async (token) => {
 export const getAdminWithdraws = async (token) => {
   try {
     const response = await fetch(`${API_URL}/withdraw/admin/requests`, {
-      headers: { Authorization: `Bearer ${token}`},
+      headers: { Authorization: `Bearer ${token}` },
     });
     const data = await response.json();
     if (!response.ok) throw { msg: data?.msg || 'লোড ব্যর্থ।' };
@@ -225,16 +230,13 @@ export const adminRejectPayment = async (paymentId, token) => {
 };
 
 // ============================================================
-// ✅ FIX: Admin Withdraw — আলাদা endpoint
-// "পাঠিয়ে দিন" → /manual-approve (টাকা refund হয় না)
-// "বাতিল"       → /reject        (টাকা refund হয়)
+// ✅ Admin Withdraw Action
 // ============================================================
 export const adminWithdrawAction = async (withdrawId, status, token) => {
   try {
-    // ✅ status অনুযায়ী আলাদা endpoint
     const endpoint = status === 'Approved'
-      ? `${API_URL}/withdraw/admin/manual-approve`  // পাঠিয়ে দিন
-      : `${API_URL}/withdraw/admin/reject`;          // বাতিল
+      ? $`{API_URL}`/withdraw/admin/manual-approve
+      : $`{API_URL}`/withdraw/admin/reject;
 
     const response = await fetch(endpoint, {
       method:  'POST',
