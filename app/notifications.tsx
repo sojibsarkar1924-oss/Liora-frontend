@@ -27,7 +27,14 @@ export default function NotificationScreen() {
   );
 }
 
-const NotificationCard = ({ title, body, time }) => (
+// TypeScript এরর দূর করার জন্য Props-এর টাইপ ইন্টারফেস যোগ করা হয়েছে
+interface NotificationCardProps {
+  title: string;
+  body: string;
+  time: string;
+}
+
+const NotificationCard = ({ title, body, time }: NotificationCardProps) => (
   <View style={styles.card}>
     <Ionicons name="notifications" size={24} color="#0984E3" />
     <View style={{ marginLeft: 15, flex: 1 }}>

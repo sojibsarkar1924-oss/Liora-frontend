@@ -1,9 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { StartAppAds } from 'react-native-startapp-ads';
-import { AuthContext, AuthProvider } from '../context/AuthContext';
-StartAppAds.init('204940666');
+import { AuthContext, AuthProvider } from '../context/AuthContext'; // এই লাইনটি লক্ষ্য করুন
 const API_URL = 'https://liora-backend-nmx8.onrender.com/api';
 
 function MaintenanceScreen() {

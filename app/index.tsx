@@ -16,14 +16,14 @@ export default function LoginScreen() {
   const router = useRouter();
   const { login } = useContext(AuthContext) as any;
 
-  // ✅ email বাদ — referralCode দিয়ে login
-  const [password,     setPassword]     = useState("");
-  const [loading,      setLoading]      = useState(false);
+  // ✅ Name + Password দিয়ে লগইন — idCode ব্যাকএন্ড থেকে অটোমেটিক চেক হবে
+  const [name,     setName]     = useState("");
+  const [password, setPassword] = useState("");
+  const [loading,  setLoading]  = useState(false);
 
   const handleLogin = async () => {
-    // ✅ Validation — referralCode চেক
-    if (!referralCode.trim()) {
-      Alert.alert("Error", "Please enter your referral code.");
+    if (!name.trim()) {
+      Alert.alert("Error", "Please enter your name.");
       return;
     }
     if (!password) {
@@ -33,9 +33,9 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // ✅ referralCode uppercase করে পাঠাও — AuthContext এর login() এ
-      // AuthContext → loginUser(referralCode, password) → backend
-      const user = await login(referralCode.trim().toUpperCase(), password);
+      // AuthContext → loginUser(name, password) → backend
+      // backend নিজেই idCode, referralCode সব check করে user data ফেরত দেবে
+      const user = await login(name.trim(), password);
 
       const role   = user?.role   || 'user';
       const status = user?.status || 'pending';
@@ -45,7 +45,6 @@ export default function LoginScreen() {
       } else if (status === 'active') {
         router.replace("/home");
       } else {
-        // pending — payment page
         Alert.alert(
           "Account Pending",
           "Please make payment to activate your account."
@@ -56,7 +55,7 @@ export default function LoginScreen() {
     } catch (error: any) {
       Alert.alert(
         "Login Failed",
-        error?.msg || error?.message || "Referral code or password is incorrect."
+        error?.msg || error?.message || "Name or password is incorrect."
       );
     } finally {
       setLoading(false);
@@ -75,21 +74,18 @@ export default function LoginScreen() {
 
       <View style={styles.form}>
 
-        {/* ✅ Email Input বাদ — Referral Code Input */}
+        {/* ✅ Name Input */}
         <View style={styles.inputWrapper}>
-          <Text style={styles.inputLabel}>Your Referral Code</Text>
+          <Text style={styles.inputLabel}>Your Name</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. AB3X9K7M"
+            placeholder="Enter your name"
             placeholderTextColor="#94a3b8"
-            value={referralCode}
-            onChangeText={(text) => setReferralCode(text.toUpperCase())}
-            autoCapitalize="characters"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
             autoCorrect={false}
           />
-          <Text style={styles.inputHint}>
-            The 8-character code shown in your profile
-          </Text>
         </View>
 
         {/* Password Input */}
@@ -155,7 +151,6 @@ const styles = StyleSheet.create({
   },
   form: { width: "100%" },
 
-  // ✅ Input wrapper with label
   inputWrapper: {
     marginBottom: 18,
   },
@@ -173,13 +168,6 @@ const styles = StyleSheet.create({
     borderColor: "#e2e8f0",
     fontSize: 16,
     color: "#1e293b",
-    letterSpacing: 1,
-  },
-  inputHint: {
-    fontSize: 11,
-    color: "#94a3b8",
-    marginTop: 5,
-    marginLeft: 4,
   },
 
   button: {

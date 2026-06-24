@@ -23,12 +23,12 @@ export const registerUser = async ({ name, password, referralCode }) => {
 // ============================================================
 // ✅ লগইন — email বাদ, referralCode দিয়ে login
 // ============================================================
-export const loginUser = async (referralCode, password) => {
+export const loginUser = async (name, password) => {
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ referralCode, password }),
+      body:    JSON.stringify({ name, password }),
     });
     const data = await response.json();
     if (!response.ok || !data.success) {

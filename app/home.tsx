@@ -3,16 +3,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Dimensions,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 
@@ -189,21 +189,19 @@ export default function HomeScreen() {
       // ✅ income নাকি outcome
       const isIncome  = type === 'task' || type === 'referral' || type === 'team';
       const amountStr = (isIncome ? '+৳' : '-৳') + String(Math.floor(numAmount));
+const label =
+  type === 'task'     ? 'Daily Bonus'     :
+  type === 'referral' ? 'Referral Bonus'  :
+  type === 'team'     ? 'Team Bonus'      :
+  item?.status === 'Pending'  ? 'Withdraw Pending'   :
+  item?.status === 'Approved' ? 'Withdraw Approved'  :
+                                'Withdraw Request';
 
-      // ✅ সব type এর label
-      const label =
-        type === 'task'     ? 'ডেইলি বোনাস'               :
-        type === 'referral' ? (item?.label || 'রেফার বোনাস') :
-        type === 'team'     ? 'টিম বোনাস'                  :
-        item?.status === 'Pending'  ? 'উইথড্র রিকোয়েস্ট'  :
-        item?.status === 'Approved' ? 'উইথড্র (সম্পন্ন)'   :
-                                      'উইথড্র রিকোয়েস্ট';  // ✅ বাতিল দেখাবে না
+const date =
+  item?.status === 'Pending' ? 'Pending' :
+  item?.date      ? new Date(item.date).toLocaleDateString()      :
+  item?.createdAt ? new Date(item.createdAt).toLocaleDateString() : '';
 
-      // ✅ তারিখ
-      const date =
-        item?.status === 'Pending' ? 'পেন্ডিং' :
-        item?.date      ? new Date(item.date).toLocaleDateString()      :
-        item?.createdAt ? new Date(item.createdAt).toLocaleDateString() : '';
 
       const color = isIncome ? 'green' : 'red';
 
@@ -283,7 +281,7 @@ export default function HomeScreen() {
                 <TouchableOpacity onPress={() => handleNav('/tasks')} activeOpacity={0.85}>
                   <LinearGradient colors={['#74B9FF', Colors.accentBlue]} style={styles.startButton}>
                     <Text style={styles.btnText}>
-                      {taskLimit > 0 ? `${taskDone}/${taskLimit}` : 'শুরু করুন'}
+                      {taskLimit > 0 ? `${taskDone}/${taskLimit}` : 'Start'}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>

@@ -17,6 +17,7 @@
       },
       "package": "com.sojibbackendadmin1.Liora"
     },
+    "ios": {},
     "plugins": [
       "expo-router"
     ],
@@ -33,7 +34,6 @@
     "updates": {
       "url": "https://u.expo.dev/f522fcbb-7afe-42dd-b739-5354ead47ddc"
     },
-    "ios": {},
     "owner": "proadmin-1924pro"
   }
 }
