@@ -5,11 +5,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
@@ -22,18 +17,12 @@
       "expo-router"
     ],
     "scheme": "liora",
+    "owner": "sojibsarkar",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f522fcbb-7afe-42dd-b739-5354ead47ddc"
+        "projectId": "43f8ad5a-3c6f-4842-91db-564d1cba6a7d"
       }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/f522fcbb-7afe-42dd-b739-5354ead47ddc"
-    },
-    "owner": "proadmin-1924pro"
+    }
   }
 }
