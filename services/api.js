@@ -235,8 +235,8 @@ export const adminRejectPayment = async (paymentId, token) => {
 export const adminWithdrawAction = async (withdrawId, status, token) => {
   try {
     const endpoint = status === 'Approved'
-      ? $`{API_URL}/withdraw/admin/manual-approve`
-      : $`{API_URL}/withdraw/admin/reject`;
+      ? `${API_URL}/withdraw/admin/manual-approve`
+      : `${API_URL}/withdraw/admin/reject`;
 
     const response = await fetch(endpoint, {
       method:  'POST',
