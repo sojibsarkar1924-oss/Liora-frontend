@@ -314,11 +314,11 @@ export default function ProfileScreen() {
             />
             <View style={styles.divider} />
 
-            {/* ✅ Package — Liora Premium দেখাবে */}
+            {/* ✅ Package — WinWay Premium দেখাবে */}
             <InfoItem
               icon="star-outline"
               label="Package"
-              value={user?.packageName || 'Liora Premium'}
+              value={user?.packageName || 'WinWay Premium'}
               color={Colors.accentPurple}
               delay={300}
             />

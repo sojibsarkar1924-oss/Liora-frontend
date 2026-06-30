@@ -194,7 +194,7 @@ export default function SignupScreen() {
                     <Ionicons name="person-add" size={36} color="white" />
                   </LinearGradient>
                 </Animated.View>
-                <Text style={styles.logoTitle}>Join Liora</Text>
+                <Text style={styles.logoTitle}>Join WinWay</Text>
                 <Text style={styles.logoSub}>Start with a referral code</Text>
               </View>
 
@@ -203,7 +203,7 @@ export default function SignupScreen() {
                 <View style={styles.premiumLeft}>
                   <Ionicons name="star" size={22} color="#F4C430" />
                   <View style={{ marginLeft: 12 }}>
-                    <Text style={styles.premiumName}>Liora Premium</Text>
+                    <Text style={styles.premiumName}>WinWay Premium</Text>
                     <Text style={styles.premiumDesc}>Single package • All benefits</Text>
                   </View>
                 </View>

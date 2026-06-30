@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Liora",
-    "slug": "Liora",
+    "name": "WinWay",
+    "slug": "winway",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,13 +10,13 @@
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.sojibbackendadmin1.Liora"
+      "package": "com.sojibbackendadmin1.winway"
     },
     "ios": {},
     "plugins": [
       "expo-router"
     ],
-    "scheme": "liora",
+    "scheme": "winway",
     "owner": "sojibsarkar",
     "extra": {
       "router": {},

@@ -195,7 +195,7 @@ const PrivacyModal = ({ visible, onClose }: { visible: boolean; onClose: () => v
             Data Usage: Collected data is used only to improve app services.{'\n\n'}
             Third Party: We never sell your data to third parties.{'\n\n'}
             Security: Your data is stored on encrypted servers.{'\n\n'}
-            Contact: For any questions, contact support@liora.app
+            Contact: For any questions, contact support@winway.app
           </Text>
         </ScrollView>
         <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -219,8 +219,8 @@ const HelpModal = ({ visible, onClose }: { visible: boolean; onClose: () => void
 
         {[
           { icon: 'logo-whatsapp', label: 'WhatsApp Support', sub: '+880 1812-323466', color: '#25D366', action: () => Linking.openURL('https://wa.me/8801812323466') },
-          { icon: 'mail-outline',  label: 'Email Support',    sub: 'support@liora.app', color: Colors.blue, action: () => Linking.openURL('mailto:support@liora.app') },
-          { icon: 'logo-facebook', label: 'Facebook Page',    sub: 'facebook.com/liora', color: '#1877F2', action: () => Linking.openURL('https://facebook.com') },
+          { icon: 'mail-outline',  label: 'Email Support',    sub: 'support@winway.app', color: Colors.blue, action: () => Linking.openURL('mailto:support@winway.app') },
+          { icon: 'logo-facebook', label: 'Facebook Page',    sub: 'facebook.com/winway', color: '#1877F2', action: () => Linking.openURL('https://facebook.com') },
         ].map((item, i) => (
           <TouchableOpacity key={i} style={styles.helpItem} onPress={item.action}>
             <View style={[styles.iconCircle, { backgroundColor: item.color + '20' }]}>
@@ -311,7 +311,7 @@ export default function SettingsScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Made with love in Bangladesh</Text>
-            <Text style={styles.footerSub}>2025 Liora. All rights reserved.</Text>
+            <Text style={styles.footerSub}>2025 WinWay. All rights reserved.</Text>
           </View>
 
         </ScrollView>

@@ -34,7 +34,7 @@ function MaintenanceScreen() {
           <Text style={styles.logoText}>L</Text>
         </View>
 
-        <Text style={styles.appName}>Liora</Text>
+        <Text style={styles.appName}>WinWay</Text>
 
         {/* Spinning icon */}
         <Animated.Text style={[styles.gearIcon, { transform: [{ rotate: spin }] }]}>

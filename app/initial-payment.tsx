@@ -20,7 +20,7 @@ import { AuthContext } from '../context/AuthContext';
 import { submitDeposit } from '../services/api';
 
 // ✅ Single fixed package — কোনো selection নেই
-const PREMIUM = { id: 'Premium', name: 'Liora Premium', price: 400, daily: 27, tasks: 9, perTask: 3 };
+const PREMIUM = { id: 'Premium', name: 'WinWay Premium', price: 400, daily: 27, tasks: 9, perTask: 3 };
 
 const BKASH_MERCHANT = '01636257147';
 

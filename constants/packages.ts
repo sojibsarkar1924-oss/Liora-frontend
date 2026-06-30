@@ -1,8 +1,8 @@
-// ✅ শুধু একটাই package — Liora Premium
+// ✅ শুধু একটাই package — WinWay Premium
 export const PACKAGES = [
   {
     id: 'premium',
-    name: 'Liora Premium',
+    name: 'WinWay Premium',
     price: 400,
     dailyIncome: 27,
     taskCount: 9,
@@ -12,4 +12,4 @@ export const PACKAGES = [
 ];
 
 export const MEMBERSHIP_FEE = 400;
-export const MEMBERSHIP_NAME = 'Liora Premium';
+export const MEMBERSHIP_NAME = 'WinWay Premium';

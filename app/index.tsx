@@ -68,7 +68,7 @@ export default function LoginScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Liora</Text>
+        <Text style={styles.title}>WinWay</Text>
         <Text style={styles.subtitle}>Welcome Back</Text>
       </View>
 
