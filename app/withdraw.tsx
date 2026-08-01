@@ -1,16 +1,7 @@
-// WalletScreen.tsx
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import LottieView from 'lottie-react-native';
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -20,424 +11,458 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
-import { requestWithdraw } from '../services/api';
 
-const MIN_WITHDRAW = 1290;
+// আপনার প্রকল্পের ফন্ট নাম অনুযায়ী পরিবর্তন করুন
+const customFont = 'AnekBangla-Regular';
 
-const METHODS = [
-  { name: 'Bkash',  color: '#E2136E', icon: '📱' },
-];
-
-function parseErrorMessage(error: any): string {
-  try {
-    if (typeof error === 'string') {
-      try { const p = JSON.parse(error); return p?.msg || p?.message || p?.error || error; }
-      catch { return error; }
-    }
-    if (typeof error === 'object' && error !== null) {
-      if (error.msg)     return error.msg;
-      if (error.message) return error.message;
-      if (error.error)   return error.error;
-      const data = error?.response?.data;
-      if (data) {
-        if (typeof data === 'string') {
-          try { const p = JSON.parse(data); return p?.msg || p?.message || data; } catch { return data; }
-        }
-        return data?.msg || data?.message || data?.error || 'সমস্যা হয়েছে।';
-      }
-    }
-  } catch (_) {}
-  return 'সার্ভার বা নেটওয়ার্ক সমস্যা। পরে চেষ্টা করুন।';
-}
-
-export default function WalletScreen() {
-  const router = useRouter();
-
-  const { userData, userToken, updateUserData } = useContext(AuthContext) as any;
-
+const WithdrawScreen = () => {
+  const [accountNumber, setAccountNumber] = useState('');
   const [amount, setAmount] = useState('');
-  const [number, setNumber] = useState('');
-  const [method, setMethod] = useState('Bkash');
-  const [loading, setLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
 
-  // to show submitted amount & method in modal (preserve even after clearing inputs)
-  const [submittedAmount, setSubmittedAmount] = useState<number | null>(null);
-  const [submittedMethod, setSubmittedMethod] = useState<string | null>(null);
+  const quickAmounts = [ 1290, 1500, 2000];
 
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.85)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 650, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 5,   useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  const balance = Number(
-    Math.max(
-      Number(userData?.balance || 0),
-      Number(userData?.wallet  || 0),
-    ),
-  );
-
-  const handleWithdraw = async () => {
-    if (!number.trim()) {
-      return Alert.alert('⚠️ ত্রুটি', 'একাউন্ট নাম্বার দিন।');
-    }
-    if (number.trim().length < 11) {
-      return Alert.alert('⚠️ ত্রুটি', 'সঠিক ১১ ডিজিটের নম্বর দিন।');
-    }
-    if (!amount.trim()) {
-      return Alert.alert('⚠️ ত্রুটি', 'টাকার পরিমাণ দিন।');
-    }
-
-    const requestAmount = Number(amount);
-
-    if (isNaN(requestAmount) || requestAmount <= 0) {
-      return Alert.alert('⚠️ ত্রুটি', 'সঠিক পরিমাণ দিন।');
-    }
-
-    if (requestAmount < MIN_WITHDRAW) {
-      return Alert.alert('⚠️ ত্রুটি', `সর্বনিম্ন ${MIN_WITHDRAW} টাকা তুলতে পারবেন।`);
-    }
-
-    if (requestAmount > balance) {
-      return Alert.alert('⚠️ ত্রুটি', `পর্যাপ্ত ব্যালেন্স নেই। বর্তমান ব্যালেন্স: ৳${balance.toFixed(2)}`);
-    }
-
-    const userId = userData?._id || userData?.id;
-    if (!userId) {
-      return Alert.alert('⚠️ ত্রুটি', 'ইউজার তথ্য পাওয়া যায়নি। আবার লগইন করুন।');
-    }
-
-    setLoading(true);
-    try {
-      const response = await requestWithdraw(
-        { userId, amount: requestAmount, method, number: number.trim() },
-        userToken,
+  // ব্যালেন্স কার্ডের জন্য ডায়াগোনাল স্ট্রাইপ (কয়েকটি রোটেটেড লাইন)
+  const renderDiagonalStripes = () => {
+    const stripes = [];
+    for (let i = 0; i < 8; i++) {
+      stripes.push(
+        <View
+          key={i}
+          style={[
+            styles.stripeLine,
+            { left: -60 + i * 45 },
+          ]}
+        />
       );
-
-      setLoading(false);
-
-      if (response?.success === true) {
-        // preserve data for modal
-        setSubmittedAmount(requestAmount);
-        setSubmittedMethod(method);
-
-        // clear inputs
-        setAmount('');
-        setNumber('');
-        setShowSuccess(true);
-
-        // refresh user data
-        if (updateUserData && userId) {
-          updateUserData(userId).catch(() => {});
-        }
-
-        // auto close modal and navigate back after short delay
-        setTimeout(() => {
-          setShowSuccess(false);
-          router.back();
-        }, 2800);
-
-      } else {
-        Alert.alert('❌ ব্যর্থ', response?.msg || 'রিকোয়েস্ট প্রসেস করা যায়নি।');
-      }
-
-    } catch (error: any) {
-      setLoading(false);
-      Alert.alert('❌ সমস্যা হয়েছে', parseErrorMessage(error));
     }
+    return stripes;
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f1f5f9" />
+      <StatusBar barStyle="light-content" backgroundColor="#1A1D21" />
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color="#1e293b" />
+      {/* ব্রাউজার হেডার */}
+      <View style={styles.browserHeader}>
+        <TouchableOpacity style={styles.iconButton}>
+          <Icon name="close" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>💰 আমার ওয়ালেট</Text>
-        <View style={{ width: 44 }} />
+        <Text style={styles.headerTitle}>withdraw.html</Text>
+        <TouchableOpacity style={styles.iconButton}>
+          <Icon name="dots-vertical" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* টপবার */}
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backButton}>
+            <Icon name="arrow-left" size={20} color="#6B7280" />
+          </TouchableOpacity>
+          <View style={styles.walletContainer}>
+            <Text style={styles.walletEmoji}>💰</Text>
+            <Text style={[styles.walletText, { fontFamily: customFont }]}>আমার ওয়ালেট</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* ব্যালেন্স কার্ড */}
+        <LinearGradient
+          colors={['#3B3F48', '#20232A', '#3B3F48']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.balanceCard}
         >
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], marginBottom: 28 }}>
-            <LinearGradient
-              colors={['#D97706', '#F59E0B']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={styles.balanceCard}
-            >
-              <Text style={styles.balanceLabel}>বর্তমান ব্যালেন্স</Text>
-              <Text style={styles.balanceAmount}>৳ {balance.toFixed(2)}</Text>
-              <View style={styles.balanceDivider} />
-              <View style={styles.balanceInfoRow}>
-                <View style={styles.balanceInfoItem}>
-                  <Ionicons name="arrow-down-circle-outline" size={15} color="#fef3c7" />
-                  <Text style={styles.balanceInfoText}>সর্বনিম্ন: ৳{MIN_WITHDRAW}</Text>
-                </View>
-                <View style={styles.balanceInfoItem}>
-                  <Ionicons name="time-outline" size={15} color="#fef3c7" />
-                  <Text style={styles.balanceInfoText}>২৪-৪৮ ঘণ্টায় প্রসেস</Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </Animated.View>
+          {/* ডায়াগোনাল স্ট্রাইপ ওভারলে */}
+          <View style={styles.stripeOverlay} pointerEvents="none">
+            {renderDiagonalStripes()}
+          </View>
 
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-            <Text style={styles.sectionTitle}>উইথড্র মেথড সিলেক্ট করুন</Text>
-            <View style={styles.methodContainer}>
-              {METHODS.map((m) => {
-                const isActive = method === m.name;
-                return (
-                  <TouchableOpacity
-                    key={m.name}
-                    style={[styles.methodBtn, isActive && { backgroundColor: m.color, borderColor: m.color }]}
-                    onPress={() => setMethod(m.name)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.methodIcon}>{m.icon}</Text>
-                    {isActive && <Ionicons name="checkmark-circle" size={13} color="white" style={{ marginRight: 3 }} />}
-                    <Text style={[styles.methodText, isActive && { color: 'white' }]}>{m.name}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+          <View style={styles.balanceHeader}>
+            <Text style={[styles.balanceLabel, { fontFamily: customFont }]}>বর্তমান ব্যালেন্স</Text>
+          </View>
+          <Text style={[styles.balanceAmount, { fontFamily: customFont }]}>৳ 0.00</Text>
+          <View style={styles.balanceFooter}>
+            <Text style={[styles.balanceFooterText, { fontFamily: customFont }]}>। সর্বনিম্ন:</Text>
+            <Text style={[styles.balanceFooterText, { fontFamily: customFont }]}>
+              <Icon name="history" size={14} color="#6B7280" /> ২৪-৪৮ ঘণ্টায়
+            </Text>
+          </View>
 
-            <Text style={styles.label}>একাউন্ট নাম্বার</Text>
-            <View style={styles.inputWrapper}>
-              <View style={styles.inputIconBg}>
-                <Ionicons name="call-outline" size={18} color="#0984E3" />
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="017xxxxxxxx"
-                placeholderTextColor="#94a3b8"
-                keyboardType="phone-pad"
-                value={number}
-                onChangeText={setNumber}
-                maxLength={11}
-              />
-              {number.length === 11 && <Ionicons name="checkmark-circle" size={22} color="#00B894" />}
-            </View>
+          {/* গোল্ডেন বর্ডার */}
+          <View style={styles.cardBorder} />
+        </LinearGradient>
 
-            <Text style={styles.label}>টাকার পরিমাণ</Text>
-            <View style={styles.inputWrapper}>
-              <View style={styles.inputIconBg}>
-                <Text style={styles.takaIconText}>৳</Text>
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder={`সর্বনিম্ন ${MIN_WITHDRAW} টাকা`}
-                placeholderTextColor="#94a3b8"
-                keyboardType="numeric"
-                value={amount}
-                onChangeText={setAmount}
-              />
-              {Number(amount) >= MIN_WITHDRAW && <Ionicons name="checkmark-circle" size={22} color="#00B894" />}
-            </View>
+        {/* উইথড্র মেথড */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { fontFamily: customFont }]}>
+            উইথড্র মেথড সিলেক্ট করুন
+          </Text>
+          <TouchableOpacity style={styles.methodButton}>
+            <Icon name="check-circle" size={22} color="#FFFFFF" />
+            <Text style={[styles.methodText, { fontFamily: customFont }]}>Bkash</Text>
+          </TouchableOpacity>
+        </View>
 
-            <Text style={styles.label}>দ্রুত সিলেক্ট</Text>
-            <View style={styles.quickAmountRow}>
-              {[850, 1000,1500, 2000].map((val) => (
-                <TouchableOpacity
-                  key={val}
-                  style={[styles.quickBtn, amount === String(val) && styles.quickBtnActive]}
-                  onPress={() => setAmount(String(val))}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.quickBtnText, amount === String(val) && { color: 'white' }]}>
-                    ৳{val}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity style={styles.withdrawBtn} onPress={handleWithdraw} disabled={loading} activeOpacity={0.85}>
-              <LinearGradient colors={['#059669', '#10B981']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.withdrawGradient}>
-                {loading ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="arrow-up-circle-outline" size={22} color="white" style={{ marginRight: 8 }} />
-                    <Text style={styles.withdrawText}>টাকা তুলুন</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <View style={styles.infoBox}>
-              <Ionicons name="shield-checkmark-outline" size={18} color="#3b82f6" />
-              <Text style={styles.infoText}>
-                রিকোয়েস্ট পেন্ডিং থাকলে ২৪-৪৮ ঘণ্টার মধ্যে প্রসেস হবে। সমস্যায় সাপোর্টে যোগাযোগ করুন।
-              </Text>
-            </View>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      <Modal visible={showSuccess} transparent animationType="fade">
-        <View style={styles.lottieBackground}>
-          <View style={styles.lottieCard}>
-            <LottieView
-              source={{ uri: 'https://lottie.host/93297ee4-469b-4396-8576-928d54630e62/p73s9Xw3f2.json' }}
-              autoPlay
-              loop={false}
-              style={{ width: 160, height: 160 }}
+        {/* একাউন্ট নাম্বার */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { fontFamily: customFont }]}>
+            একাউন্ট নাম্বার
+          </Text>
+          <View style={styles.inputContainer}>
+            <Icon name="phone" size={20} color="#6B7280" style={styles.inputIcon} />
+            <TextInput
+              style={[styles.input, { fontFamily: customFont }]}
+              placeholder="017xxxxxxxx"
+              placeholderTextColor="#6B7280"
+              keyboardType="phone-pad"
+              value={accountNumber}
+              onChangeText={setAccountNumber}
             />
-            <Text style={styles.successTitle}>✅ সফল হয়েছে!</Text>
-            <Text style={styles.successSub}>আপনার উইথড্র রিকোয়েস্ট{'\n'}পেন্ডিং-এ রয়েছে।</Text>
-            <View style={styles.successAmountBox}>
-              <Text style={styles.successAmountText}>
-                ৳{submittedAmount !== null ? submittedAmount : '0'} → {submittedMethod || method}
-              </Text>
-            </View>
           </View>
         </View>
-      </Modal>
+
+        {/* টাকার পরিমাণ */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { fontFamily: customFont }]}>
+            টাকার পরিমাণ
+          </Text>
+          <View style={styles.inputContainer}>
+            <Text style={[styles.takaIcon, { fontFamily: customFont }]}>৳</Text>
+            <TextInput
+              style={[styles.input, { fontFamily: customFont }]}
+              placeholder="সর্বনিম্ন 1290 টাকা"
+              placeholderTextColor="#14B8A6"
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={(text) => {
+                setAmount(text);
+                setSelectedAmount(null);
+              }}
+            />
+          </View>
+        </View>
+
+        {/* দ্রুত সিলেক্ট */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { fontFamily: customFont }]}>
+            দ্রুত সিলেক্ট
+          </Text>
+          <View style={styles.quickAmountGrid}>
+            {quickAmounts.map((amt) => (
+              <TouchableOpacity
+                key={amt}
+                style={[
+                  styles.quickAmountButton,
+                  selectedAmount === amt && styles.selectedQuickAmount,
+                ]}
+                onPress={() => {
+                  setSelectedAmount(amt);
+                  setAmount(amt.toString());
+                }}
+              >
+                <Text
+                  style={[
+                    styles.quickAmountText,
+                    { fontFamily: customFont },
+                    selectedAmount === amt && styles.selectedQuickAmountText,
+                  ]}
+                >
+                  ৳{amt}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* সাবমিট বোতাম - গ্লো ইফেক্ট সহ */}
+        <View style={styles.submitButtonWrapper}>
+          <TouchableOpacity style={styles.submitButton} activeOpacity={0.85}>
+            <Text style={[styles.submitButtonText, { fontFamily: customFont }]}>
+              ↑ টাকা তুলুন
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ইনফো বক্স */}
+        <View style={styles.infoBox}>
+          <Icon name="shield-check" size={24} color="#6B7280" style={styles.infoIcon} />
+          <Text style={[styles.infoText, { fontFamily: customFont }]}>
+            রিকোয়েস্ট পেন্ডিং থাকলে ২৪-৪৮ ঘণ্টার মধ্যে প্রসেস হবে। সমস্যায় সাপোর্ট যোগাযোগ করুন।
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* বটম ট্যাব নেভিগেশন */}
+      <View style={styles.bottomTabBar}>
+        <TouchableOpacity style={styles.tabItem}>
+          <Icon name="home-outline" size={24} color="#6B7280" />
+          <Text style={[styles.tabLabel, { fontFamily: customFont }]}>হোম</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.tabItem}>
+          <Icon name="wallet" size={24} color="#14B8A6" />
+          <Text style={[styles.tabLabel, styles.tabLabelActive, { fontFamily: customFont }]}>
+            ওয়ালেট
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.tabItem}>
+          <Icon name="history" size={24} color="#6B7280" />
+          <Text style={[styles.tabLabel, { fontFamily: customFont }]}>হিস্টোরি</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.tabItem}>
+          <Icon name="account-outline" size={24} color="#6B7280" />
+          <Text style={[styles.tabLabel, { fontFamily: customFont }]}>প্রোফাইল</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9' },
-  header: {
+  container: {
+    flex: 1,
+    backgroundColor: '#1A1D21',
+  },
+  browserHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D343E',
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 80,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#2D343E',
+  },
+  walletContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  walletEmoji: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  walletText: {
+    color: '#D4AF37',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  balanceCard: {
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  stripeOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  stripeLine: {
+    position: 'absolute',
+    top: -40,
+    width: 18,
+    height: 260,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    transform: [{ rotate: '20deg' }],
+  },
+  balanceHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  balanceLabel: {
+    color: '#D4AF37',
+    fontSize: 14,
+  },
+  balanceAmount: {
+    color: '#FFFFFF',
+    fontSize: 48,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  balanceFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    elevation: 3,
+    marginTop: 8,
   },
-  backButton:    { padding: 10, borderRadius: 12, backgroundColor: '#f1f5f9' },
-  headerTitle:   { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
-  content:       { padding: 20, paddingBottom: 50 },
-  balanceCard:   { borderRadius: 24, padding: 28, elevation: 10 },
-  balanceLabel:  { color: '#fde68a', fontSize: 15, fontWeight: '500', textAlign: 'center' },
-  balanceAmount: { color: 'white', fontSize: 46, fontWeight: 'bold', textAlign: 'center', marginVertical: 8 },
-  balanceDivider:{ height: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginVertical: 12 },
-  balanceInfoRow:{ flexDirection: 'row', justifyContent: 'space-around' },
-  balanceInfoItem:{ flexDirection: 'row', alignItems: 'center', marginRight: 5 },
-  balanceInfoText:{ color: '#fef3c7', fontSize: 12 },
-
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 10, color: '#1e293b' },
-
-  methodContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18 },
-
-  methodBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: '#fff',
+  balanceFooterText: {
+    color: '#6B7280',
+    fontSize: 12,
   },
-
-  methodIcon: {
+  cardBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderWidth: 2,
+    borderColor: '#D4AF3744',
+    borderRadius: 16,
+  },
+  sectionContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    color: '#FFFFFF',
     fontSize: 16,
-    marginRight: 6,
+    marginBottom: 12,
   },
-
-  methodText: { fontSize: 13, fontWeight: '600', color: '#334155' },
-
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 10,
-    color: '#1e293b',
-  },
-
-  inputWrapper: {
+  methodButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
+    alignSelf: 'flex-start', // ✅ hug content, full-width নয়
+    backgroundColor: '#ED58A6',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  methodText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D343E',
+    borderRadius: 12,
     paddingHorizontal: 12,
-    backgroundColor: '#fff',
-    marginBottom: 10,
   },
-
-  input: { flex: 1, height: 46, fontSize: 15, color: '#0f172a' },
-
-  inputIconBg: { marginRight: 8 },
-
-  takaIconText: { fontSize: 16, fontWeight: 'bold', color: '#059669' },
-
-  quickAmountRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 12 },
-
-  quickBtn: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: '#fff',
+  inputIcon: {
+    marginRight: 8,
   },
-
-  quickBtnActive: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
+  takaIcon: {
+    color: '#14B8A6',
+    fontSize: 18,
+    marginRight: 8,
   },
-
-  quickBtnText: { fontWeight: '600', color: '#1e293b' },
-
-  withdrawBtn: { marginTop: 10, borderRadius: 16, overflow: 'hidden' },
-
-  withdrawGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-
-  withdrawText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-
-  infoBox: { flexDirection: 'row', marginTop: 16, alignItems: 'center' },
-
-  infoText: { flex: 1, fontSize: 12, color: '#64748b' },
-
-  lottieBackground: {
+  input: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 48,
+    color: '#FFFFFF',
+    fontSize: 16,
   },
-
-  lottieCard: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 20,
-    alignItems: 'center',
-    width: 260,
+  quickAmountGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-
-  successTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 6 },
-
-  successSub: { fontSize: 13, textAlign: 'center', color: '#64748b', marginTop: 4 },
-
-  successAmountBox: {
-    marginTop: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  quickAmountButton: {
+    backgroundColor: '#2D343E',
     borderRadius: 8,
-    backgroundColor: '#f1f5f9',
+    width: '23%',
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
-
-  successAmountText: { fontWeight: 'bold' },
+  selectedQuickAmount: {
+    backgroundColor: '#14B8A622',
+    borderWidth: 1,
+    borderColor: '#14B8A6',
+  },
+  quickAmountText: {
+    color: '#14B8A6',
+    fontSize: 14,
+  },
+  selectedQuickAmountText: {
+    fontWeight: 'bold',
+  },
+  submitButtonWrapper: {
+    marginBottom: 20,
+    borderRadius: 24,
+    // গ্লো ইফেক্ট (iOS)
+    shadowColor: '#14B8A6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    // Android গ্লো-ইশ elevation
+    elevation: 10,
+  },
+  submitButton: {
+    backgroundColor: '#14B8A6',
+    borderRadius: 24,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    color: '#0B3D2E',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#2D343E',
+    borderRadius: 12,
+    padding: 16,
+  },
+  infoIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  infoText: {
+    flex: 1,
+    color: '#6B7280',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  iconButton: {
+    padding: 8,
+  },
+  bottomTabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: '#1A1D21',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#2D343E',
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    color: '#6B7280',
+    fontSize: 11,
+    marginTop: 4,
+  },
+  tabLabelActive: {
+    color: '#14B8A6',
+    fontWeight: 'bold',
+  },
 });
+
+export default WithdrawScreen;

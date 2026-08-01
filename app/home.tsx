@@ -1,424 +1,372 @@
+/**
+ * app/home.tsx
+ *
+ * এই ভার্সনে ২টা ফিক্স যোগ করা হয়েছে (আগের রিভিউ থেকে):
+ * 1) formatMoney — এখন toLocaleString('bn-BD') এর বদলে নিজস্ব ম্যানুয়াল
+ *    বাংলা-সংখ্যা কনভার্টার ব্যবহার করে, যাতে Hermes/ICU সাপোর্ট না থাকা
+ *    ডিভাইসেও নিশ্চিতভাবে কাজ করে (কোনো locale/Intl নির্ভরতা নেই)।
+ * 2) getSafeBadge — userLevel যদি কখনো 1-50 রেঞ্জের বাইরে চলে যায়
+ *    (ভুল ডেটা/বাগ), তাহলে ক্র্যাশ না করে 1-50 এর মধ্যে ক্ল্যাম্প করে নেয়।
+ */
+
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React from 'react';
 import {
-  Animated,
-  Dimensions,
-  RefreshControl,
+  Image,
+  Platform,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
 
-// ✅ FIXED: আলাদা import নেই — সরাসরি fetch ব্যবহার
-const API_URL = 'https://liora-backend-nmx8.onrender.com/api';
+// আপনার ডাইনামিক ব্যাজ এসেটস
+import badgeAssets from '../constants/badgeAssets';
 
-const { width } = Dimensions.get('window');
+// আপনার আইকনগুলো (নিশ্চিত করুন এই ৯টা PNG assets/images/icons/ ফোল্ডারে আছে)
+const avatarProfile = require('../assets/images/icons/avatar-profile.png');
+const logoArrow = require('../assets/images/icons/logo-arrow.png');
+const iconMoneybag = require('../assets/images/icons/icon-moneybag.png');
+const iconWalletSmall = require('../assets/images/icons/icon-wallet-small.png');
+const iconGG = require('../assets/images/icons/icon-gg.png');
+const iconGame = require('../assets/images/icons/icon-game.png');
+const iconCaptcha = require('../assets/images/icons/icon-captcha.png');
+const iconVideo = require('../assets/images/icons/icon-video.png');
+const iconRefer = require('../assets/images/icons/icon-refer.png');
 
-const Colors = {
-  bgGradientStart: '#C8DFF7',
-  bgGradientEnd:   '#EEF5FF',
-  glassWhite:      'rgba(255, 255, 255, 0.50)',
-  glassBorder:     'rgba(255, 255, 255, 0.75)',
-  primaryText:     '#1A2533',
-  secondaryText:   '#636E72',
-  accentBlue:      '#0984E3',
-  accentGreen:     '#00B894',
-  accentOrange:    '#E17055',
+// ---------- ফিক্স ১: locale-নির্ভর নয় এমন বাংলা সংখ্যা কনভার্টার ----------
+const BENGALI_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+
+function toBengaliDigits(input: string) {
+  return input.replace(/[0-9]/g, (d) => BENGALI_DIGITS[Number(d)]);
+}
+
+function formatMoney(amount: number) {
+  // ইংরেজি সংখ্যায় থাউজেন্ড-সেপারেটর সহ ফরম্যাট করি (এটা সব ডিভাইসে
+  // নিশ্চিতভাবে কাজ করে, কোনো locale/ICU নির্ভরতা নেই), তারপর
+  // প্রতিটা অঙ্ক বাংলা সংখ্যায় বদলে দিই।
+  const fixed = Number(amount).toFixed(2); // যেমন "1500.00"
+  const [intPart, decimalPart] = fixed.split('.');
+  const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ','); // "1,500"
+  const englishFormatted = `${withCommas}.${decimalPart}`; // "1,500.00"
+  const taka = '\u09F3'; // ৳ চিহ্ন, ইউনিকোড এস্কেপ দিয়ে লেখা যাতে কপি-পেস্টে নষ্ট না হয়
+  return taka + ' ' + toBengaliDigits(englishFormatted);
+}
+
+// ---------- ফিক্স ২: ব্যাজ ইনডেক্স নিরাপদ রেঞ্জে ক্ল্যাম্প করা ----------
+function getSafeBadge(level: number) {
+  const clamped = Math.min(Math.max(Math.round(level), 1), 50);
+  return badgeAssets[clamped];
+}
+
+type EarnCard = {
+  key: string;
+  title: string;
+  subtitle: string;
+  icon: any;
+  color: string;
+  route: string;
 };
 
-const GlassView = ({ children, style }: any) => (
-  <View style={[styles.glassContainer, style]}>{children}</View>
-);
+const earnCards: EarnCard[] = [
+  {
+    key: 'game',
+    title: 'গেম খেলুন',
+    subtitle: 'গেমস ও আর্কেড গেম খেলুন',
+    icon: iconGame,
+    color: '#00d2ff', // Cyan
+    route: '/game',
+  },
+  {
+    key: 'captcha',
+    title: 'ক্যাপচা পূরণ করুন',
+    subtitle: 'সহজ ক্যাপচা সমাধান করে আয় করুন',
+    icon: iconCaptcha,
+    color: '#c026d3', // Purple
+    route: '/captcha',
+  },
+  {
+    key: 'video',
+    title: 'ভিডিও দেখুন',
+    subtitle: 'ভিডিও দেখে আয় করুন',
+    icon: iconVideo,
+    color: '#e11d48', // Pink
+    route: '/video',
+  },
+  {
+    key: 'refer',
+    title: 'বন্ধুদের রেফার করুন',
+    subtitle: 'বন্ধুদের রেফার করে আয় করুন',
+    icon: iconRefer,
+    color: '#ea580c', // Orange/Red
+    route: '/refer',
+  },
+];
 
-const ActionButton = ({ label, icon, isActive, onPress, delay }: any) => {
-  const scaleAnim = useRef(new Animated.Value(0.7)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 5,   delay, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  const pressScale = useRef(new Animated.Value(1)).current;
-  const onPressIn  = () => Animated.spring(pressScale, { toValue: 0.92, useNativeDriver: true }).start();
-  const onPressOut = () => Animated.spring(pressScale, { toValue: 1,    useNativeDriver: true }).start();
-
-  return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '22%' }}>
-      <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1} style={styles.actionWrapper}>
-        <Animated.View style={[styles.glassContainer, styles.actionTile, isActive && styles.activeTile, { transform: [{ scale: pressScale }] }]}>
-          <Ionicons name={icon} size={26} color={isActive ? '#FFF' : Colors.accentBlue} />
-        </Animated.View>
-        <Text style={styles.actionLabel}>{label}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-};
-
-const TransactionItem = ({ label, date, amount, color, delay }: any) => {
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 400, delay, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  return (
-    <Animated.View style={[styles.transRow, { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }]}>
-      <View style={[styles.transIcon, { backgroundColor: color === 'green' ? '#E8FDF5' : '#FFF0EE' }]}>
-        <Ionicons
-          name={color === 'red' ? 'arrow-up' : 'arrow-down'}
-          size={18}
-          color={color === 'green' ? Colors.accentGreen : Colors.accentOrange}
-        />
-      </View>
-      <View style={{ flex: 1, paddingHorizontal: 12 }}>
-        <Text style={styles.transLabel}>{label}</Text>
-        <Text style={styles.transDate}>{date}</Text>
-      </View>
-      <Text style={[styles.transAmount, { color: color === 'green' ? Colors.accentGreen : Colors.accentOrange }]}>
-        {amount}
-      </Text>
-    </Animated.View>
-  );
-};
+// iOS এর জন্য রঙিন শ্যাডো, Android এর জন্য এলিভেশন
+function glowStyle(color: string) {
+  return Platform.select({
+    ios: {
+      shadowColor: color,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 10,
+    },
+    android: {
+      elevation: 8,
+      shadowColor: color, // Android 28+ এ সাপোর্ট করে
+    },
+  });
+}
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { userData, updateUserData } = useContext(AuthContext) as any;
-  const [refreshing,   setRefreshing]   = useState(false);
-  const [transactions, setTransactions] = useState<any[]>([]);
 
-  const headerFade   = useRef(new Animated.Value(0)).current;
-  const balanceScale = useRef(new Animated.Value(0.8)).current;
-  const balanceFade  = useRef(new Animated.Value(0)).current;
-  const floatAnim    = useRef(new Animated.Value(0)).current;
-
-  const balance = Math.max(Number(userData?.balance || 0), Number(userData?.wallet || 0));
-
-  const today     = new Date().toISOString().split('T')[0];
-  const taskDone  = userData?.lastTaskDate === today ? (userData?.todayTaskCount || 0) : 0;
-  const taskLimit = userData?.taskLimit || 0;
-
-  useFocusEffect(
-    useCallback(() => {
-      const id = userData?.id || userData?._id;
-      if (id && updateUserData) {
-        updateUserData(id).catch(() => {});
-        fetchTransactions(id);
-      }
-    }, [userData?.id, userData?._id])
-  );
-
-  // ✅ FIXED: history API ব্যবহার করো (withdraw + task একসাথে)
-  const fetchTransactions = async (userId: string) => {
-    try {
-      const res  = await fetch(`${API_URL}/history/${userId}`);
-      const data = await res.json();
-      if (data?.success && data?.data) {
-        setTransactions(data.data.slice(0, 5));
-      }
-    } catch {
-      // silent fail
-    }
-  };
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(headerFade,   { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.spring(balanceScale, { toValue: 1, friction: 5,   useNativeDriver: true }),
-      Animated.timing(balanceFade,  { toValue: 1, duration: 700, useNativeDriver: true }),
-    ]).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, { toValue: -10, duration: 1500, useNativeDriver: true }),
-        Animated.timing(floatAnim, { toValue: 0,   duration: 1500, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
-
-  const balancePulse = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(balancePulse, { toValue: 1.03, duration: 1000, useNativeDriver: true }),
-        Animated.timing(balancePulse, { toValue: 1,    duration: 1000, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    const id = userData?.id || userData?._id;
-    if (id && updateUserData) {
-      updateUserData(id)
-        .then(() => fetchTransactions(id))
-        .catch(() => {})
-        .finally(() => setRefreshing(false));
-    } else {
-      setTimeout(() => setRefreshing(false), 1000);
-    }
-  }, [userData]);
-
-  const handleNav = (path: string) => router.push(path as any);
-
-  const getInitials = (name: string) => {
-    if (!name) return '?';
-    return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2);
-  };
-
-  // ✅ FIXED: NaN ও key prop দুটোই ঠিক করা
-  const formatTransaction = (item: any, index: number) => {
-    try {
-      const type      = item?.type || 'withdraw';
-      const numAmount = isNaN(Number(item?.amount)) ? 0 : Number(item?.amount);
-
-      // ✅ income নাকি outcome
-      const isIncome  = type === 'task' || type === 'referral' || type === 'team';
-      const amountStr = (isIncome ? '+৳' : '-৳') + String(Math.floor(numAmount));
-const label =
-  type === 'task'     ? 'Daily Bonus'     :
-  type === 'referral' ? 'Referral Bonus'  :
-  type === 'team'     ? 'Team Bonus'      :
-  item?.status === 'Pending'  ? 'Withdraw Pending'   :
-  item?.status === 'Approved' ? 'Withdraw Approved'  :
-                                'Withdraw Request';
-
-const date =
-  item?.status === 'Pending' ? 'Pending' :
-  item?.date      ? new Date(item.date).toLocaleDateString()      :
-  item?.createdAt ? new Date(item.createdAt).toLocaleDateString() : '';
-
-
-      const color = isIncome ? 'green' : 'red';
-
-      return (
-        <TransactionItem
-          key={String(index)}
-          label={label}
-          date={date}
-          amount={amountStr}
-          color={color}
-          delay={index * 100}
-        />
-      );
-    } catch (e) {
-      return null;
-    }
-  };
+  const userLevel = 25;
+  const currentBalance = 1500;
+  const todaysEarning = 500;
+  const totalEarning = 9000;
 
   return (
-    <LinearGradient colors={[Colors.bgGradientStart, Colors.bgGradientEnd]} style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor={Colors.bgGradientStart} />
-
-        <View style={styles.body}>
-          {/* হেডার */}
-          <Animated.View style={[styles.header, { opacity: headerFade }]}>
-            <TouchableOpacity style={styles.userInfo} onPress={() => handleNav('/profile')}>
-              <View style={styles.avatarContainer}>
-                <LinearGradient colors={[Colors.accentBlue, '#6C5CE7']} style={styles.avatarGradient}>
-                  <Text style={styles.avatarText}>{getInitials(userData?.name || '')}</Text>
-                </LinearGradient>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ---------- হেডার ---------- */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity style={styles.headerItem} onPress={() => router.push('/profile')}>
+              <View style={[styles.avatarCircle, glowStyle('#00d2ff')]}>
+                <Image source={avatarProfile} style={styles.avatarImage} />
               </View>
-              <View style={{ marginLeft: 12 }}>
-                <Text style={styles.welcomeText}>স্বাগতম 👋</Text>
-                <Text style={styles.userName}>{userData?.name || 'ব্যবহারকারী'}</Text>
-              </View>
+              <Text style={styles.headerLabel}>প্রোফাইল</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.notifBtn}>
-              <Ionicons name="notifications-outline" size={22} color={Colors.primaryText} />
-              <View style={styles.notifDot} />
-            </TouchableOpacity>
-          </Animated.View>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.accentBlue]} />}
-          >
-            {/* ব্যালেন্স কার্ড */}
-            <Animated.View style={[styles.glassContainer, styles.balanceCard, { opacity: balanceFade, transform: [{ scale: balancePulse }] }]}>
-              <View style={styles.decorCircle1} />
-              <View style={styles.decorCircle2} />
-              <Text style={styles.balanceLabel}>একাউন্ট ব্যালেন্স</Text>
-              <Animated.Text style={[styles.balanceAmount, { transform: [{ scale: balanceScale }] }]}>
-                ৳{balance.toFixed(0)}
-              </Animated.Text>
-              <View style={styles.balanceStatsRow}>
-                <View style={styles.balanceStat}>
-                  <Ionicons name="people-outline" size={14} color={Colors.secondaryText} />
-                  <Text style={styles.balanceStatText}>টিম: {userData?.teamCount ?? 0} জন</Text>
-                </View>
-                <View style={styles.balanceStatDivider} />
-                <View style={styles.balanceStat}>
-                  <Ionicons name="gift-outline" size={14} color={Colors.secondaryText} />
-                  <Text style={styles.balanceStatText}>রেফার: {userData?.referralCount ?? 0} টি</Text>
-                </View>
-              </View>
-            </Animated.View>
-
-            {/* গিফট সেকশন */}
-            <View style={styles.giftSection}>
-              <GlassView style={styles.giftPanel}>
-                <View style={styles.giftTextContainer}>
-                  <Text style={styles.giftTitle}>🎁 ডেইলি বোনাস</Text>
-                  <Text style={styles.giftSub}>আজকের কাজ শুরু করুন</Text>
-                </View>
-                <TouchableOpacity onPress={() => handleNav('/tasks')} activeOpacity={0.85}>
-                  <LinearGradient colors={['#74B9FF', Colors.accentBlue]} style={styles.startButton}>
-                    <Text style={styles.btnText}>
-                      {taskLimit > 0 ? `${taskDone}/${taskLimit}` : 'Start'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </GlassView>
-
-              <Animated.Image
-                source={{ uri: 'https://cdn3d.iconscout.com/3d/premium/thumb/gift-box-4431271-3671561.png' }}
-                style={[styles.real3DImage, { transform: [{ translateY: floatAnim }] }]}
-                resizeMode="contain"
-              />
-            </View>
-
-            {/* অ্যাকশন বাটন */}
-            <View style={styles.actionGrid}>
-              <ActionButton label="উইথড্র"    icon="wallet-outline"            isActive={true}  onPress={() => handleNav('/withdraw')} delay={100} />
-              <ActionButton label="ট্রান্সফার" icon="swap-horizontal-outline"   isActive={false} onPress={() => handleNav('/transfer')} delay={200} />
-              <ActionButton label="ডিপোজিট"   icon="arrow-down-circle-outline" isActive={false} onPress={() => handleNav('/deposit')}  delay={300} />
-              <ActionButton label="সেটিংস"    icon="settings-outline"          isActive={false} onPress={() => handleNav('/settings')} delay={400} />
-            </View>
-
-            {/* লেনদেনের ইতিহাস */}
-            <View style={styles.listSection}>
-              <View style={styles.listHeader}>
-                <Text style={styles.sectionHeader}>লেনদেনের ইতিহাস</Text>
-                <TouchableOpacity onPress={() => handleNav('/history')}>
-                  <Text style={styles.seeAll}>সব দেখুন</Text>
-                </TouchableOpacity>
-              </View>
-
-              {transactions.length > 0 ? (
-                transactions.map((item, index) => formatTransaction(item, index))
-              ) : (
-                <View style={styles.noTrans}>
-                  <Ionicons name="receipt-outline" size={40} color="#cbd5e1" />
-                  <Text style={styles.noTransText}>কোনো লেনদেন নেই</Text>
-                </View>
-              )}
-            </View>
-          </ScrollView>
-
-          {/* বটম নেভ */}
-          <View style={styles.bottomNav}>
-            <TouchableOpacity onPress={() => handleNav('/home')} style={styles.navItem}>
-              <View style={styles.navActiveIndicator} />
-              <Ionicons name="home" size={24} color={Colors.accentBlue} />
-              <Text style={[styles.navLabel, { color: Colors.accentBlue }]}>হোম</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleNav('/withdraw')} style={styles.navItem}>
-              <Ionicons name="card-outline" size={24} color={Colors.secondaryText} />
-              <Text style={styles.navLabel}>ওয়ালেট</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleNav('/profile')} style={styles.navItem}>
-              <Ionicons name="person-outline" size={24} color={Colors.secondaryText} />
-              <Text style={styles.navLabel}>প্রোফাইল</Text>
+            <TouchableOpacity style={[styles.headerItem, { marginLeft: 10 }]} onPress={() => router.push('/level' as any)}>
+              <Image source={getSafeBadge(userLevel)} style={styles.badgeImage} resizeMode="contain" />
+              <Text style={styles.levelLabel}>Lv. {userLevel}</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.centerTitleWrap}>
+            <Image source={logoArrow} style={styles.logoImage} resizeMode="contain" />
+            <Text style={styles.titleText}>আমার আয়</Text>
+          </View>
+
+          <TouchableOpacity style={styles.headerItem} onPress={() => router.push('/settings')}>
+            <View style={[styles.settingsCircle, glowStyle('#00d2ff')]}>
+              <Ionicons name="settings-outline" size={24} color="#00d2ff" />
+            </View>
+            <Text style={styles.headerLabel}>সেটিংস</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    </LinearGradient>
+
+        {/* ---------- ব্যালেন্স কার্ড ---------- */}
+        <View style={[styles.balanceCard, glowStyle('#00d2ff')]}>
+          <Text style={styles.balanceAmount}>{formatMoney(currentBalance)}</Text>
+          <Text style={styles.balanceLabel}>বর্তমান ব্যালেন্স</Text>
+          <Image source={iconMoneybag} style={styles.balanceBagImage} resizeMode="contain" />
+        </View>
+
+        {/* ---------- আজকের ও মোট উপার্জন ---------- */}
+        <View style={styles.statsRow}>
+          <View style={[styles.statBox, { borderColor: '#00d2ff' }, glowStyle('#00d2ff')]}>
+            <Image source={iconWalletSmall} style={styles.statIcon} resizeMode="contain" />
+            <View style={styles.statTextWrap}>
+              <Text style={styles.statLabel}>আজকের উপার্জন</Text>
+              <Text style={styles.statAmount}>{formatMoney(todaysEarning)}</Text>
+            </View>
+            <Image source={iconMoneybag} style={styles.statCornerIcon} resizeMode="contain" />
+          </View>
+
+          <View style={[styles.statBox, { borderColor: '#ea580c' }, glowStyle('#ea580c')]}>
+            <Image source={iconGG} style={styles.statIcon} resizeMode="contain" />
+            <View style={styles.statTextWrap}>
+              <Text style={styles.statLabel}>মোট উপার্জন</Text>
+              <Text style={styles.statAmount}>{formatMoney(totalEarning)}</Text>
+            </View>
+            <Image source={iconMoneybag} style={styles.statCornerIcon} resizeMode="contain" />
+          </View>
+        </View>
+
+        {/* ---------- সেকশন টাইটেল ---------- */}
+        <Text style={styles.sectionTitle}>টাকা আয় করার উপায়</Text>
+
+        {/* ---------- আয়ের অপশন লিস্ট ---------- */}
+        {earnCards.map((card) => (
+          <TouchableOpacity
+            key={card.key}
+            activeOpacity={0.8}
+            onPress={() => router.push(card.route as any)}
+          >
+            <View style={[styles.optionCard, { borderColor: card.color }, glowStyle(card.color)]}>
+              <View style={styles.optionTextWrap}>
+                <Text style={styles.optionTitle}>{card.title}</Text>
+                <Text style={styles.optionSubtitle}>{card.subtitle}</Text>
+              </View>
+              <Image source={card.icon} style={styles.optionIconImage} resizeMode="contain" />
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* নিচের স্পেস যাতে ন্যাভিগেশন বারের পেছনে কিছু ঢাকা না পড়ে */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* ---------- বটম ন্যাভিগেশন ---------- */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.push('/home')}>
+          <Ionicons name="home" size={24} color="#00d2ff" />
+          <Text style={[styles.bottomNavLabel, { color: '#00d2ff' }]}>হোম</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.push('/wallet')}>
+          <Ionicons name="wallet" size={24} color="#64748b" />
+          <Text style={styles.bottomNavLabel}>ওয়ালেট</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.push('/signup')}>
+          <Ionicons name="person-add" size={24} color="#64748b" />
+          <Text style={styles.bottomNavLabel}>নতুন অ্যাকাউন্ট</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  safeArea:  { flex: 1 },
-  body:      { flex: 1, paddingHorizontal: 20, paddingTop: 10 },
+  safeArea: { flex: 1, backgroundColor: '#090a10' },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 20 },
 
-  glassContainer: {
-    backgroundColor: Colors.glassWhite, borderColor: Colors.glassBorder,
-    borderWidth: 1.5, borderRadius: 20,
-    shadowColor: '#8FB1D6', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18, shadowRadius: 12, elevation: 5,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  headerItem: { alignItems: 'center' },
+
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#00d2ff',
+    overflow: 'hidden',
+    backgroundColor: '#1e293b',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: { width: '80%', height: '80%' },
+
+  badgeImage: { width: 50, height: 50 },
+
+  settingsCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#00d2ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 210, 255, 0.1)',
   },
 
-  header:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 10 },
-  userInfo:        { flexDirection: 'row', alignItems: 'center' },
-  avatarContainer: { width: 48, height: 48, borderRadius: 24, overflow: 'hidden' },
-  avatarGradient:  { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
-  avatarText:      { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  welcomeText:     { fontSize: 12, color: Colors.secondaryText },
-  userName:        { fontSize: 18, fontWeight: 'bold', color: Colors.primaryText },
-  notifBtn: {
-    width: 45, height: 45, borderRadius: 22.5,
-    backgroundColor: Colors.glassWhite, borderWidth: 1.5, borderColor: Colors.glassBorder,
-    justifyContent: 'center', alignItems: 'center', elevation: 4,
-  },
-  notifDot: {
-    position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#E17055', borderWidth: 1.5, borderColor: 'white',
+  headerLabel: { color: '#94a3b8', fontSize: 12, marginTop: 6 },
+  levelLabel: { color: '#d946ef', fontSize: 12, fontWeight: 'bold', marginTop: 2 },
+
+  centerTitleWrap: { flexDirection: 'row', alignItems: 'center', marginTop: -15 },
+  logoImage: { width: 30, height: 30, marginRight: 8 },
+  titleText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
 
-  balanceCard:        { padding: 28, alignItems: 'center', marginBottom: 20, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.65)' },
-  decorCircle1:       { position: 'absolute', top: -40, right: -40, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(9,132,227,0.08)' },
-  decorCircle2:       { position: 'absolute', bottom: -30, left: -30, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(0,184,148,0.08)' },
-  balanceLabel:       { fontSize: 14, color: Colors.secondaryText, marginBottom: 8, fontWeight: '500' },
-  balanceAmount:      { fontSize: 40, fontWeight: 'bold', color: Colors.primaryText, marginBottom: 16 },
-  balanceStatsRow:    { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  balanceStat:        { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  balanceStatDivider: { width: 1, height: 16, backgroundColor: 'rgba(0,0,0,0.1)' },
-  balanceStatText:    { fontSize: 12, color: Colors.secondaryText, fontWeight: '600' },
+  balanceCard: {
+    borderWidth: 1.5,
+    borderColor: '#00d2ff',
+    borderRadius: 16,
+    paddingVertical: 24,
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    marginBottom: 16,
+    position: 'relative',
+  },
+  balanceAmount: { fontSize: 36, fontWeight: 'bold', color: '#ffffff' },
+  balanceLabel: { fontSize: 14, color: '#94a3b8', marginTop: 8 },
+  balanceBagImage: {
+    position: 'absolute',
+    right: 16,
+    bottom: -10,
+    width: 80,
+    height: 80,
+  },
 
-  giftSection:       { marginBottom: 28, height: 120, justifyContent: 'flex-end' },
-  giftPanel:         { height: 90, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'rgba(230,242,255,0.65)' },
-  giftTextContainer: { flex: 1 },
-  giftTitle:         { fontSize: 15, fontWeight: 'bold', color: Colors.primaryText },
-  giftSub:           { fontSize: 12, color: Colors.secondaryText, marginTop: 2 },
-  startButton:       { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
-  btnText:           { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
-  real3DImage:       { position: 'absolute', width: 120, height: 120, top: -30, left: width / 2 - 60, zIndex: 99 },
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  statBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.2,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#0f172a',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  statIcon: { width: 32, height: 32, marginRight: 8 },
+  statTextWrap: { flex: 1 },
+  statLabel: { fontSize: 12, color: '#94a3b8' },
+  statAmount: { fontSize: 14, fontWeight: 'bold', color: '#ffffff', marginTop: 4 },
+  statCornerIcon: {
+    position: 'absolute',
+    right: -5,
+    bottom: -5,
+    width: 35,
+    height: 35,
+    opacity: 0.9,
+  },
 
-  actionGrid:    { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28 },
-  actionWrapper: { alignItems: 'center' },
-  actionTile:    { width: 62, height: 62, justifyContent: 'center', alignItems: 'center', borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.65)' },
-  activeTile:    { backgroundColor: Colors.accentBlue, borderColor: Colors.accentBlue },
-  actionLabel:   { fontSize: 11, marginTop: 7, color: Colors.secondaryText, fontWeight: '600' },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#ffffff', marginBottom: 16 },
 
-  listSection:   { paddingBottom: 100 },
-  listHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  sectionHeader: { fontSize: 17, fontWeight: 'bold', color: Colors.primaryText },
-  seeAll:        { fontSize: 12, color: Colors.accentBlue, fontWeight: '600' },
-  transRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.6)', padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)', elevation: 2 },
-  transIcon:     { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  transLabel:    { fontSize: 14, fontWeight: '700', color: Colors.primaryText },
-  transDate:     { fontSize: 11, color: Colors.secondaryText, marginTop: 2 },
-  transAmount:   { fontWeight: 'bold', fontSize: 15 },
-
-  noTrans:     { alignItems: 'center', paddingVertical: 30 },
-  noTransText: { color: '#94a3b8', marginTop: 8, fontSize: 14 },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingLeft: 16,
+    paddingRight: 12,
+    backgroundColor: '#0f172a',
+    marginBottom: 12,
+  },
+  optionTextWrap: { flex: 1, paddingRight: 10 },
+  optionTitle: { fontSize: 18, fontWeight: 'bold', color: '#ffffff', marginBottom: 4 },
+  optionSubtitle: { fontSize: 13, color: '#94a3b8' },
+  optionIconImage: { width: 80, height: 80 },
 
   bottomNav: {
-    position: 'absolute', bottom: 16, left: 30, right: 30, height: 65,
-    flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
-    borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.96)',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.9)', elevation: 12,
-    shadowColor: '#0984E3', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 12,
+    backgroundColor: '#090a10',
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  navItem:            { alignItems: 'center', position: 'relative', paddingTop: 4 },
-  navActiveIndicator: { position: 'absolute', top: -2, width: 20, height: 3, backgroundColor: Colors.accentBlue, borderRadius: 2 },
-  navLabel:           { fontSize: 10, color: Colors.secondaryText, marginTop: 3, fontWeight: '600' },
+  bottomNavItem: { alignItems: 'center' },
+  bottomNavLabel: { fontSize: 12, color: '#64748b', marginTop: 4, fontWeight: '500' },
 });

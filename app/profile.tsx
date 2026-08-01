@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
-  Clipboard,
-  RefreshControl,
+  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -19,461 +19,367 @@ import {
 import { AuthContext } from '../context/AuthContext';
 
 const Colors = {
-  bgGradientStart: '#C8DFF7',
-  bgGradientEnd:   '#EEF5FF',
-  glassWhite:      'rgba(255, 255, 255, 0.55)',
-  glassBorder:     'rgba(255, 255, 255, 0.75)',
-  primaryText:     '#1A2533',
-  accentBlue:      '#0984E3',
-  accentGreen:     '#00B894',
-  accentOrange:    '#E17055',
-  accentPurple:    '#6C5CE7',
-  subText:         '#636E72',
+  bg:          '#0B0C10',
+  cardDark:    '#14151A',
+  primaryText: '#FFFFFF',
+  secondaryText: '#8E909A',
+  cyan:   '#00C9A7',
+  purple: '#8358FF',
+  red:    '#FF4D4D',
+  green:  '#25A171',
+  yellow: '#FFB800',
 };
 
-const GlassCard = ({ children, style }: any) => (
-  <View style={[styles.glass, style]}>{children}</View>
+// ── Diagonal stripe banner background ───────────────────────────
+const StripeBanner = () => {
+  const stripes = [];
+  for (let i = -4; i < 14; i++) {
+    stripes.push(
+      <View
+        key={i}
+        style={[
+          styles.diagStripe,
+          { left: i * 30 - 60 },
+        ]}
+      />
+    );
+  }
+  return <View style={styles.stripeWrap} pointerEvents="none">{stripes}</View>;
+};
+
+// ── Custom Calendar Icon ─────────────────────────────────────────
+const CustomCalendar = () => (
+  <View style={styles.calWrapper}>
+    <View style={styles.calTop}>
+      <Text style={styles.calTopText}>JUL</Text>
+    </View>
+    <View style={styles.calBottom}>
+      <Text style={styles.calBottomText}>17</Text>
+    </View>
+  </View>
 );
 
-// ✅ Copy করার সুবিধা সহ InfoItem
-const InfoItem = ({
-  icon, label, value, color, delay, copyable = false,
-}: {
-  icon: any; label: string; value: string;
-  color: string; delay: number; copyable?: boolean;
-}) => {
-  const slideAnim = useRef(new Animated.Value(40)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
+// ── Stat Card ────────────────────────────────────────────────────
+const StatCard = ({ icon, value, label, valueColor, iconBg }: any) => (
+  <View style={styles.statCard}>
+    <View style={[styles.statIcon, { backgroundColor: iconBg }]}>
+      <Text style={{ fontSize: 18 }}>{icon}</Text>
+    </View>
+    <Text style={[styles.statValue, { color: valueColor }]}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 500, delay, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, friction: 7, delay, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  const handleCopy = () => {
-    Clipboard.setString(value);
-    Alert.alert('Copied!', value + ' copied to clipboard.');
-  };
-
-  return (
-    <Animated.View style={[styles.infoRow, { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }]}>
-      <View style={[styles.iconCircle, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={22} color={color} />
-      </View>
-      <View style={{ marginLeft: 15, flex: 1 }}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
+// ── Info Card (Flex Row Item) ───────────────────────────────────
+const InfoCard = ({
+  icon, customIcon, iconBg, label, value, bgTint,
+  copyable, onCopy, showArrow,
+}: any) => (
+  <View style={[styles.infoCard, bgTint && { backgroundColor: bgTint }]}>
+    <View style={styles.infoCardTop}>
+      <View style={[styles.infoIconCircle, { backgroundColor: iconBg }]}>
+        {customIcon ? (
+          customIcon
+        ) : typeof icon === 'string' ? (
+          <Text style={{ fontSize: 15 }}>{icon}</Text>
+        ) : (
+          <Ionicons name={icon} size={16} color="#fff" />
+        )}
       </View>
       {copyable ? (
-        <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
-          <Ionicons name="copy-outline" size={18} color={color} />
+        <TouchableOpacity onPress={onCopy} style={styles.copyBtn}>
+          <Ionicons name="copy-outline" size={14} color={Colors.secondaryText} />
         </TouchableOpacity>
-      ) : (
-        <Ionicons name="chevron-forward" size={16} color="#b2bec3" />
-      )}
-    </Animated.View>
-  );
-};
+      ) : showArrow ? (
+        <Ionicons name="chevron-forward" size={14} color="#555761" style={{ marginTop: 4 }} />
+      ) : null}
+    </View>
+    <View>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  </View>
+);
 
-const StatCard = ({
-  icon, label, value, color, delay,
-}: {
-  icon: any; label: string; value: string; color: string; delay: number;
-}) => {
-  const scaleAnim = useRef(new Animated.Value(0.6)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 500, delay, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 5,   delay, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  return (
-    <Animated.View style={[styles.statCard, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-      <View style={[styles.statIconBg, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={22} color={color} />
-      </View>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </Animated.View>
-  );
-};
-
+// ═══════════════════════════════════════════════════════════════
 export default function ProfileScreen() {
   const router = useRouter();
   const { userData, updateUserData } = useContext(AuthContext) as any;
 
-  const [user,       setUser]       = useState<any>(userData || null);
-  const [loading,    setLoading]    = useState(!userData);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error,      setError]      = useState('');
+  const [user, setUser] = useState<any>(userData || null);
+  const [loading, setLoading] = useState(!userData);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
-  const headerFade  = useRef(new Animated.Value(0)).current;
-  const avatarScale = useRef(new Animated.Value(0.5)).current;
+  useEffect(() => {
+    if (userData) { setUser(userData); setLoading(false); }
+    loadAvatar();
+  }, [userData]);
 
-  const loadProfile = async (isRefresh = false) => {
+  // ── ছবি local storage থেকে load ──────────────────────────────
+  const loadAvatar = async () => {
     try {
-      if (isRefresh) setRefreshing(true);
-      else setLoading(true);
-      setError('');
+      const uid = userData?._id || userData?.id;
+      if (!uid) return;
+      const saved = await AsyncStorage.getItem(`avatar_${uid}`);
+      if (saved) setAvatarUri(saved);
+    } catch {}
+  };
 
-      const currentUser = userData || user;
-      if (!currentUser) { setError('User data not found. Please login again.'); return; }
-
-      const userId = currentUser._id || currentUser.id;
-      if (!userId)      { setError('User ID not found.'); return; }
-
-      const updatedUser = await updateUserData(userId);
-      if (updatedUser) setUser(updatedUser);
-      else             setUser(currentUser);
-
-    } catch (err: any) {
-      if (userData) setUser(userData);
-      else          setError('Could not load profile.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  // ── প্রোফাইল ছবি পরিবর্তন ─────────────────────────────────────
+  const handleChangeAvatar = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Please allow photo library access to change your profile picture.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      const uri = result.assets[0].uri;
+      setAvatarUri(uri);
+      try {
+        const uid = userData?._id || userData?.id;
+        if (uid) await AsyncStorage.setItem(`avatar_${uid}`, uri);
+      } catch {}
     }
   };
 
-  useEffect(() => {
-    if (userData) { setUser(userData); setLoading(false); loadProfile(true); }
-    else            loadProfile();
-  }, []);
+  const getInitial = (name: string) => (name ? name.charAt(0).toUpperCase() : '?');
 
-  useEffect(() => { if (userData) setUser(userData); }, [userData]);
-
-  useEffect(() => {
-    if (!loading && user) {
-      Animated.parallel([
-        Animated.timing(headerFade,  { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.spring(avatarScale, { toValue: 1, friction: 4,   useNativeDriver: true }),
-      ]).start();
-    }
-  }, [loading, user]);
-
-  const getInitials = (name: string) => {
-    if (!name) return '?';
-    return name.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2);
+  const copyToClipboard = async (text: string, label: string) => {
+    await Clipboard.setStringAsync(text);
+    Alert.alert('Copied!', `${label} copied to clipboard.`);
   };
 
   if (loading) {
     return (
-      <LinearGradient colors={[Colors.bgGradientStart, Colors.bgGradientEnd]} style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.accentBlue} />
-        <Text style={{ marginTop: 16, color: Colors.subText, fontSize: 15 }}>Loading profile...</Text>
-      </LinearGradient>
-    );
-  }
-
-  if (error && !user) {
-    return (
-      <LinearGradient colors={[Colors.bgGradientStart, Colors.bgGradientEnd]} style={styles.centered}>
-        <Ionicons name="wifi-outline" size={60} color="#b2bec3" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={() => loadProfile()}>
-          <Text style={styles.retryText}>Try Again</Text>
-        </TouchableOpacity>
-      </LinearGradient>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.purple} />
+      </View>
     );
   }
 
   return (
-    <LinearGradient colors={[Colors.bgGradientStart, Colors.bgGradientEnd]} style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.bgGradientStart} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
       <SafeAreaView style={{ flex: 1 }}>
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={Colors.primaryText} />
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="close" size={22} color="#d1d1d1" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity onPress={() => loadProfile(true)} style={styles.backBtn}>
-            <Ionicons name="refresh-outline" size={22} color={Colors.accentBlue} />
+          <TouchableOpacity>
+            <Ionicons name="ellipsis-vertical" size={18} color="#d1d1d1" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => loadProfile(true)}
-              colors={[Colors.accentBlue]}
-              tintColor={Colors.accentBlue}
-            />
-          }
-        >
-          {/* Profile Card */}
-          <Animated.View style={{ opacity: headerFade }}>
-            <GlassCard style={styles.profileCard}>
-              <Animated.View style={[styles.avatarLarge, { transform: [{ scale: avatarScale }] }]}>
-                <LinearGradient
-                  colors={[Colors.accentBlue, '#6C5CE7']}
-                  style={styles.avatarGradient}
-                >
-                  <Text style={styles.avatarInitials}>
-                    {getInitials(user?.name || 'User')}
-                  </Text>
-                </LinearGradient>
-              </Animated.View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-              <Text style={styles.userName}>{user?.name || 'Name not found'}</Text>
+          {/* ── Profile Banner ── */}
+          <View style={styles.banner}>
+            <StripeBanner />
 
-              {/* ✅ ID Code — badge হিসেবে দেখানো */}
-              <View style={styles.idCodeBadge}>
-                <Ionicons name="finger-print-outline" size={14} color={Colors.accentPurple} />
-                <Text style={styles.idCodeText}>
-                  ID: {user?.idCode || 'Loading...'}
-                </Text>
+            {/* Avatar — Half-Cut at the top */}
+            <TouchableOpacity style={styles.avatarWrap} onPress={handleChangeAvatar} activeOpacity={0.85}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarGradientFallback}>
+                  <Text style={styles.avatarInitial}>{getInitial(user?.name || '')}</Text>
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Ionicons name="camera" size={12} color="#fff" />
               </View>
+            </TouchableOpacity>
 
-              <View style={styles.badge}>
-                <Ionicons name="checkmark-circle" size={14} color={Colors.accentGreen} />
-                <Text style={styles.badgeText}>Active Member</Text>
+            <Text style={styles.profileName}>{user?.name || 'User'}</Text>
+
+            <View style={styles.badgesWrap}>
+              <View style={styles.badgeId}>
+                <View style={styles.idIconTag}>
+                  <Text style={styles.idIconTagText}>ID</Text>
+                </View>
+                <Text style={styles.badgeIdText}>ID: {user?.idCode || 'Loading...'}</Text>
               </View>
-            </GlassCard>
-          </Animated.View>
+              <View style={styles.badgeActive}>
+                <Ionicons name="checkmark" size={12} color={Colors.green} />
+                <Text style={styles.badgeActiveText}>Active Member</Text>
+              </View>
+            </View>
+          </View>
 
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <StatCard
-              icon="wallet-outline"
-              label="Total"
-              value={'৳' + Number(user?.totalEarnings || user?.wallet || 0).toLocaleString()}
-              color={Colors.accentGreen}
-              delay={100}
+          {/* ── Stats ── */}
+          <View style={styles.statsGrid}>
+            <StatCard icon="💼" value={'৳' + Number(user?.totalEarnings || user?.wallet || 0)} label="Total"
+              valueColor={Colors.cyan} iconBg="rgba(0,201,167,0.08)" />
+            <StatCard icon="👥" value={(user?.teamCount || 0) + ' members'} label="Team"
+              valueColor="#BFA6FF" iconBg="rgba(131,88,255,0.08)" />
+            <StatCard icon="📈" value={(user?.referralCount || 0) + ' times'} label="Refer"
+              valueColor={Colors.red} iconBg="rgba(255,77,77,0.08)" />
+          </View>
+
+          {/* ── Identity & Codes ── */}
+          <Text style={styles.sectionTitle}>Identity & Codes</Text>
+          <View style={styles.gridRow}>
+            <InfoCard
+              icon="ID" iconBg="#6A2CC9"
+              label="ID Code (Account Switch)"
+              value={user?.idCode || 'Not assigned'}
+              bgTint="#1D1530"
+              copyable
+              onCopy={() => copyToClipboard(user?.idCode || '', 'ID Code')}
             />
-            <StatCard
-              icon="people-outline"
-              label="Team"
-              value={(user?.teamCount || user?.referralCount || 0) + ' members'}
-              color={Colors.accentPurple}
-              delay={200}
-            />
-            <StatCard
-              icon="trending-up-outline"
-              label="Refer"
-              value={(user?.referralCount || 0) + ' times'}
-              color={Colors.accentOrange}
-              delay={300}
+            <InfoCard
+              icon="🎁" iconBg="#B55D14"
+              label="Referral Code (Login Code)"
+              value={user?.referralCode || 'Not found'}
+              bgTint="#2B1D15"
+              copyable
+              onCopy={() => copyToClipboard(user?.referralCode || '', 'Referral Code')}
             />
           </View>
 
-          {/* ✅ ID & Code Section — নতুন */}
-          <GlassCard>
-            <Text style={styles.sectionTitle}>Identity & Codes</Text>
-
-            {/* ✅ ID Code — copy করা যাবে */}
-            <InfoItem
-              icon="finger-print-outline"
-              label="ID Code (Account Switch)"
-              value={user?.idCode || 'Not assigned'}
-              color={Colors.accentPurple}
-              delay={50}
-              copyable
-            />
-            <View style={styles.divider} />
-
-            {/* ✅ Referral Code — copy করা যাবে */}
-            <InfoItem
-              icon="gift-outline"
-              label="Referral Code (Login Code)"
-              value={user?.referralCode || 'Not found'}
-              color={Colors.accentOrange}
-              delay={100}
-              copyable
-            />
-          </GlassCard>
-
-          {/* Personal Info */}
-          <GlassCard>
-            <Text style={styles.sectionTitle}>Personal Info</Text>
-
-            <InfoItem
-              icon="person-outline"
-              label="Full Name"
-              value={user?.name || 'Not set'}
-              color={Colors.accentBlue}
-              delay={100}
-            />
-            <View style={styles.divider} />
-
-            <InfoItem
-              icon="call-outline"
-              label="Phone Number"
-              value={user?.phone || 'Not added'}
-              color={Colors.accentGreen}
-              delay={200}
-            />
-            <View style={styles.divider} />
-
-            {/* ✅ Package — WinWay Premium দেখাবে */}
-            <InfoItem
-              icon="star-outline"
-              label="Package"
-              value={user?.packageName || 'WinWay Premium'}
-              color={Colors.accentPurple}
-              delay={300}
-            />
-            <View style={styles.divider} />
-
-            <InfoItem
-              icon="calendar-outline"
-              label="Joined"
+          {/* ── Personal Info ── */}
+          <Text style={styles.sectionTitle}>Personal Info</Text>
+          <View style={styles.gridRow}>
+            <InfoCard icon="person" iconBg="#1C5BA6" label="Full Name" value={user?.name || 'Not set'} showArrow />
+            <InfoCard icon="call" iconBg="#248175" label="Phone Number" value={user?.phone || 'Not added'} showArrow />
+          </View>
+          <View style={styles.gridRow}>
+            <InfoCard icon="star" iconBg="#6136A8" label="Package" value={user?.packageName || 'WinWay Premium'} showArrow />
+            <InfoCard
+              customIcon={<CustomCalendar />} iconBg="#A82741" label="Joined"
               value={
                 user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString('en-BD', {
-                      year: 'numeric', month: 'long', day: 'numeric',
-                    })
-                  : 'Unknown'
+                  ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                  : '30 June 2026'
               }
-              color={Colors.accentGreen}
-              delay={400}
+              showArrow
             />
-          </GlassCard>
+          </View>
 
-          {/* Bonus Info */}
-          <GlassCard>
-            <Text style={styles.sectionTitle}>Bonus Details</Text>
-
-            <InfoItem
-              icon="person-add-outline"
-              label="Referral Bonus"
-              value={'৳' + Number(user?.referralBonus || 0).toFixed(2)}
-              color={Colors.accentGreen}
-              delay={100}
-            />
-            <View style={styles.divider} />
-            <InfoItem
-              icon="people-outline"
-              label="Team Bonus"
-              value={'৳' + Number(user?.teamBonus || 0).toFixed(2)}
-              color={Colors.accentBlue}
-              delay={200}
-            />
-          </GlassCard>
-
-          {/* Wallet Card */}
-          <GlassCard style={styles.walletCard}>
-            <LinearGradient
-              colors={['#0984E3', '#6C5CE7']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={styles.walletGradient}
-            >
-              <View style={styles.walletRow}>
-                <View>
-                  <Text style={styles.walletLabel}>Current Balance</Text>
-                  <Text style={styles.walletAmount}>
-                    {'৳ ' + Number(user?.wallet || user?.balance || 0).toFixed(2)}
-                  </Text>
-                </View>
-                <View style={styles.walletIconBg}>
-                  <Ionicons name="wallet" size={30} color="white" />
-                </View>
-              </View>
-            </LinearGradient>
-          </GlassCard>
+          {/* ── Bonus Details Button ── */}
+          <TouchableOpacity style={styles.bonusBtn} activeOpacity={0.85}>
+            <Text style={{ fontSize: 18 }}>🎁</Text>
+            <Text style={styles.bonusBtnText}>Bonus Details</Text>
+          </TouchableOpacity>
 
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:     { flex: 1 },
-  centered:      { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: Colors.bg },
+
   header: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 16,
   },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#1A2533' },
-  backBtn: {
-    padding: 10, backgroundColor: 'rgba(255,255,255,0.6)',
-    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)',
+  headerTitle: { fontSize: 15, fontWeight: '600', color: '#fff' },
+
+  // Banner
+  banner: {
+    marginHorizontal: 20, marginBottom: 20,
+    borderRadius: 24, backgroundColor: '#1B162B',
+    alignItems: 'center', paddingBottom: 25,
+    overflow: 'hidden', // Required to clip the avatar
+    position: 'relative',
   },
-  glass: {
-    backgroundColor: 'rgba(255,255,255,0.55)',
-    borderColor: 'rgba(255,255,255,0.75)',
-    borderWidth: 1.5, borderRadius: 22,
-    padding: 20, marginBottom: 18,
-    shadowColor: '#0984E3', shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12, elevation: 4,
+  stripeWrap: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  diagStripe: {
+    position: 'absolute', top: -40, bottom: -40,
+    width: 15, backgroundColor: '#151224',
+    transform: [{ rotate: '-45deg' }],
   },
-  profileCard:   { alignItems: 'center', paddingVertical: 28 },
-  avatarLarge: {
-    width: 100, height: 100, borderRadius: 50, marginBottom: 16,
-    shadowColor: '#0984E3', shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 6 }, elevation: 10,
+
+  // Avatar Clipping Fix
+  avatarWrap: {
+    width: 76, height: 76, borderRadius: 38,
+    marginTop: -38, // Half-cut at the top border
+    position: 'relative',
   },
-  avatarGradient: {
-    width: 100, height: 100, borderRadius: 50,
+  avatarImage: { width: 76, height: 76, borderRadius: 38 },
+  avatarGradientFallback: {
+    width: 76, height: 76, borderRadius: 38,
+    backgroundColor: '#8B5CF6',
+    alignItems: 'center',
+  },
+  avatarInitial: { 
+    fontSize: 26, fontWeight: 'bold', color: '#fff', 
+    marginTop: 40 // Centered in the lower visible half
+  },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 4, right: 8,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: Colors.purple,
     justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: '#1B162B',
   },
-  avatarInitials: { fontSize: 36, fontWeight: 'bold', color: 'white' },
-  userName: { fontSize: 24, fontWeight: 'bold', color: '#1A2533', marginBottom: 10 },
 
-  // ✅ ID Code badge
-  idCodeBadge: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(108,92,231,0.10)',
-    paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 20, gap: 6, marginBottom: 8,
-    borderWidth: 1, borderColor: 'rgba(108,92,231,0.25)',
+  profileName: { fontSize: 19, fontWeight: '600', color: '#fff', marginTop: 10, marginBottom: 12 },
+
+  badgesWrap: { alignItems: 'center', gap: 8 },
+  badgeId: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(131,88,255,0.15)',
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
   },
-  idCodeText: { color: '#6C5CE7', fontSize: 13, fontWeight: '700', letterSpacing: 1 },
-
-  badge: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#00B89415', paddingHorizontal: 12,
-    paddingVertical: 5, borderRadius: 20, gap: 5,
-    borderWidth: 1, borderColor: '#00B89440',
+  idIconTag: { backgroundColor: Colors.purple, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5 },
+  idIconTagText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
+  badgeIdText: { color: '#BFA6FF', fontSize: 12, fontWeight: '500' },
+  badgeActive: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(37,161,113,0.15)',
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
   },
-  badgeText: { color: '#00B894', fontSize: 12, fontWeight: '600' },
+  badgeActiveText: { color: Colors.green, fontSize: 12, fontWeight: '600' },
 
-  statsRow:  { flexDirection: 'row', gap: 12, marginBottom: 18 },
+  // Stats
+  statsGrid: { flexDirection: 'row', gap: 12, paddingHorizontal: 20, marginBottom: 25 },
   statCard: {
-    flex: 1, backgroundColor: 'rgba(255,255,255,0.6)',
-    borderRadius: 18, padding: 14, alignItems: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.8)',
-    elevation: 3,
+    flex: 1, backgroundColor: Colors.cardDark, borderRadius: 16,
+    paddingVertical: 16, paddingHorizontal: 8, alignItems: 'center',
   },
-  statIconBg:  { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  statValue:   { fontSize: 14, fontWeight: 'bold', marginBottom: 3 },
-  statLabel:   { fontSize: 11, color: '#636E72', textAlign: 'center' },
-  sectionTitle:{ fontSize: 15, fontWeight: '700', color: '#1A2533', marginBottom: 16 },
-  infoRow:     { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
-  iconCircle:  { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  infoLabel:   { fontSize: 12, color: '#636E72', marginBottom: 2 },
-  infoValue:   { fontSize: 15, fontWeight: '700', color: '#1A2533' },
-  divider:     { height: 1, backgroundColor: 'rgba(0,0,0,0.06)', marginVertical: 10 },
+  statIcon: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  statValue: { fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  statLabel: { fontSize: 11, color: Colors.secondaryText },
 
-  // ✅ Copy button
-  copyBtn: {
-    padding: 8, backgroundColor: 'rgba(108,92,231,0.10)',
-    borderRadius: 10,
-  },
+  sectionTitle: { fontSize: 14, fontWeight: '600', color: '#fff', paddingHorizontal: 20, marginBottom: 14, marginTop: 25 },
 
-  walletCard:     { padding: 0, overflow: 'hidden' },
-  walletGradient: { borderRadius: 20, padding: 24 },
-  walletRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  walletLabel:    { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 8 },
-  walletAmount:   { color: 'white', fontSize: 32, fontWeight: 'bold' },
-  walletIconBg: {
-    width: 60, height: 60, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center', alignItems: 'center',
+  // Grid Fix (flex: 1 instead of width: 47%)
+  gridRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 20, marginBottom: 12 },
+  infoCard: {
+    flex: 1, // Adjusted for perfect spacing
+    backgroundColor: Colors.cardDark, borderRadius: 18,
+    padding: 16, minHeight: 115, justifyContent: 'space-between',
   },
-  errorText: { color: '#636E72', fontSize: 15, marginTop: 16, textAlign: 'center', paddingHorizontal: 30 },
-  retryBtn:  { marginTop: 20, backgroundColor: '#0984E3', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 14 },
-  retryText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
+  infoCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  infoIconCircle: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  copyBtn: { padding: 5, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 6 },
+  infoLabel: { fontSize: 11, color: Colors.secondaryText, marginBottom: 6, lineHeight: 15 },
+  infoValue: { fontSize: 13, fontWeight: '600', color: '#fff' },
+
+  // Custom Calendar Styles
+  calWrapper: { width: 22, height: 24, backgroundColor: '#fff', borderRadius: 4, overflow: 'hidden' },
+  calTop: { backgroundColor: '#FF3B3B', paddingVertical: 2, alignItems: 'center' },
+  calTopText: { color: '#fff', fontSize: 6, fontWeight: '700' },
+  calBottom: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  calBottomText: { color: '#000', fontSize: 11, fontWeight: '800' },
+
+  bonusBtn: {
+    marginHorizontal: 20, marginTop: 15,
+    backgroundColor: '#17151A', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: 'rgba(255,184,0,0.08)',
+  },
+  bonusBtnText: { fontSize: 14, fontWeight: '600', color: '#FFD257' },
 });
