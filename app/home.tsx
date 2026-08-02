@@ -1,12 +1,14 @@
 /**
  * app/home.tsx
  *
- * এই ভার্সনে ২টা ফিক্স যোগ করা হয়েছে (আগের রিভিউ থেকে):
- * 1) formatMoney — এখন toLocaleString('bn-BD') এর বদলে নিজস্ব ম্যানুয়াল
- *    বাংলা-সংখ্যা কনভার্টার ব্যবহার করে, যাতে Hermes/ICU সাপোর্ট না থাকা
- *    ডিভাইসেও নিশ্চিতভাবে কাজ করে (কোনো locale/Intl নির্ভরতা নেই)।
- * 2) getSafeBadge — userLevel যদি কখনো 1-50 রেঞ্জের বাইরে চলে যায়
- *    (ভুল ডেটা/বাগ), তাহলে ক্র্যাশ না করে 1-50 এর মধ্যে ক্ল্যাম্প করে নেয়।
+ * নতুন ফিক্স (এই ভার্সনে):
+ * 3) প্রোফাইল অ্যাভাটার এখন ডাইনামিক — ইউজার নিজের ছবি আপলোড করলে
+ *    সেটা দেখাবে, না করলে Ionicons "person" আইকন fallback দেখাবে
+ *    (কোনো আলাদা PNG লাগে না এই অংশের জন্য)।
+ *
+ * আগের ফিক্সগুলো:
+ * 1) formatMoney — locale-নির্ভর নয় এমন ম্যানুয়াল বাংলা সংখ্যা কনভার্টার
+ * 2) getSafeBadge — userLevel ১-৫০ রেঞ্জে ক্ল্যাম্প করা
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -26,8 +28,11 @@ import {
 // আপনার ডাইনামিক ব্যাজ এসেটস
 import badgeAssets from '../constants/badgeAssets';
 
-// আপনার আইকনগুলো (নিশ্চিত করুন এই ৯টা PNG assets/images/icons/ ফোল্ডারে আছে)
-const avatarProfile = require('../assets/images/icons/avatar-profile.png');
+// প্রোফাইল অ্যাভাটারের জন্য আর কোনো PNG লাগবে না — ইউজার ছবি না দিলে
+// নিচে সরাসরি Ionicons "person" আইকন fallback হিসেবে দেখানো হয় (দেখুন render অংশে)।
+
+// বাকি আইকনগুলো — এগুলো অ্যাপের নিজস্ব ব্র্যান্ডিং, সব ইউজারের জন্য একই
+// (নিশ্চিত করুন এই ৮টা PNG assets/images/icons/ ফোল্ডারে আছে)
 const logoArrow = require('../assets/images/icons/logo-arrow.png');
 const iconMoneybag = require('../assets/images/icons/icon-moneybag.png');
 const iconWalletSmall = require('../assets/images/icons/icon-wallet-small.png');
@@ -37,7 +42,7 @@ const iconCaptcha = require('../assets/images/icons/icon-captcha.png');
 const iconVideo = require('../assets/images/icons/icon-video.png');
 const iconRefer = require('../assets/images/icons/icon-refer.png');
 
-// ---------- ফিক্স ১: locale-নির্ভর নয় এমন বাংলা সংখ্যা কনভার্টার ----------
+// ---------- locale-নির্ভর নয় এমন বাংলা সংখ্যা কনভার্টার ----------
 const BENGALI_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
 
 function toBengaliDigits(input: string) {
@@ -45,18 +50,15 @@ function toBengaliDigits(input: string) {
 }
 
 function formatMoney(amount: number) {
-  // ইংরেজি সংখ্যায় থাউজেন্ড-সেপারেটর সহ ফরম্যাট করি (এটা সব ডিভাইসে
-  // নিশ্চিতভাবে কাজ করে, কোনো locale/ICU নির্ভরতা নেই), তারপর
-  // প্রতিটা অঙ্ক বাংলা সংখ্যায় বদলে দিই।
   const fixed = Number(amount).toFixed(2); // যেমন "1500.00"
   const [intPart, decimalPart] = fixed.split('.');
   const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ','); // "1,500"
   const englishFormatted = `${withCommas}.${decimalPart}`; // "1,500.00"
-  const taka = '\u09F3'; // ৳ চিহ্ন, ইউনিকোড এস্কেপ দিয়ে লেখা যাতে কপি-পেস্টে নষ্ট না হয়
+  const taka = '\u09F3'; // ৳ চিহ্ন
   return taka + ' ' + toBengaliDigits(englishFormatted);
 }
 
-// ---------- ফিক্স ২: ব্যাজ ইনডেক্স নিরাপদ রেঞ্জে ক্ল্যাম্প করা ----------
+// ---------- ব্যাজ ইনডেক্স নিরাপদ রেঞ্জে ক্ল্যাম্প করা ----------
 function getSafeBadge(level: number) {
   const clamped = Math.min(Math.max(Math.round(level), 1), 50);
   return badgeAssets[clamped];
@@ -77,7 +79,7 @@ const earnCards: EarnCard[] = [
     title: 'গেম খেলুন',
     subtitle: 'গেমস ও আর্কেড গেম খেলুন',
     icon: iconGame,
-    color: '#00d2ff', // Cyan
+    color: '#00d2ff',
     route: '/game',
   },
   {
@@ -85,7 +87,7 @@ const earnCards: EarnCard[] = [
     title: 'ক্যাপচা পূরণ করুন',
     subtitle: 'সহজ ক্যাপচা সমাধান করে আয় করুন',
     icon: iconCaptcha,
-    color: '#c026d3', // Purple
+    color: '#c026d3',
     route: '/captcha',
   },
   {
@@ -93,7 +95,7 @@ const earnCards: EarnCard[] = [
     title: 'ভিডিও দেখুন',
     subtitle: 'ভিডিও দেখে আয় করুন',
     icon: iconVideo,
-    color: '#e11d48', // Pink
+    color: '#e11d48',
     route: '/video',
   },
   {
@@ -101,12 +103,11 @@ const earnCards: EarnCard[] = [
     title: 'বন্ধুদের রেফার করুন',
     subtitle: 'বন্ধুদের রেফার করে আয় করুন',
     icon: iconRefer,
-    color: '#ea580c', // Orange/Red
+    color: '#ea580c',
     route: '/refer',
   },
 ];
 
-// iOS এর জন্য রঙিন শ্যাডো, Android এর জন্য এলিভেশন
 function glowStyle(color: string) {
   return Platform.select({
     ios: {
@@ -117,18 +118,26 @@ function glowStyle(color: string) {
     },
     android: {
       elevation: 8,
-      shadowColor: color, // Android 28+ এ সাপোর্ট করে
+      shadowColor: color,
     },
   });
 }
 
-export default function HomeScreen() {
+type HomeScreenProps = {
+  // ইউজারের আসল প্রোফাইল ছবির URL/URI — আপনার auth/user state থেকে আসবে।
+  // null/undefined হলে ডিফল্ট placeholder দেখাবে।
+  userProfileImageUri?: string | null;
+};
+
+export default function HomeScreen({ userProfileImageUri = null }: HomeScreenProps) {
   const router = useRouter();
 
   const userLevel = 25;
   const currentBalance = 1500;
   const todaysEarning = 500;
   const totalEarning = 9000;
+
+  // ইউজার নিজের ছবি দিয়ে থাকলে Image দেখাবে, নাহলে নিচে person আইকন fallback (JSX অংশে)
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -141,7 +150,11 @@ export default function HomeScreen() {
           <View style={styles.headerLeft}>
             <TouchableOpacity style={styles.headerItem} onPress={() => router.push('/profile')}>
               <View style={[styles.avatarCircle, glowStyle('#00d2ff')]}>
-                <Image source={avatarProfile} style={styles.avatarImage} />
+                {userProfileImageUri ? (
+                  <Image source={{ uri: userProfileImageUri }} style={styles.avatarImage} />
+                ) : (
+                  <Ionicons name="person" size={22} color="#00d2ff" />
+                )}
               </View>
               <Text style={styles.headerLabel}>প্রোফাইল</Text>
             </TouchableOpacity>
@@ -213,7 +226,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ))}
 
-        {/* নিচের স্পেস যাতে ন্যাভিগেশন বারের পেছনে কিছু ঢাকা না পড়ে */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -262,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarImage: { width: '80%', height: '80%' },
+  avatarImage: { width: '100%', height: '100%' },
 
   badgeImage: { width: 50, height: 50 },
 
