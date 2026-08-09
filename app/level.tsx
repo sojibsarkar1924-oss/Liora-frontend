@@ -45,13 +45,13 @@ function getSafeBadge(level: number) {
 export default function LevelScreen() {
   const router = useRouter();
 
-  // ডেমো ডেটা — আসল ডেটা আপনার ব্যাকএন্ড/স্টেট থেকে আসবে
-  const currentLevel = 25;
-  const referralCount = 25;
+  // ডেমো ডেটা — bastob অবস্থায় নতুন ইউজারের লেভেল ১ ও রেফার ০ হওয়ার কথা।
+  // পরে ব্যাকএন্ড থেকে আসল মান আনবেন।
+  const currentLevel = 1;
+  const referralCount = 0;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* হেডার */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={26} color="#ffffff" />
@@ -64,7 +64,6 @@ export default function LevelScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* বর্তমান স্ট্যাটাস কার্ড */}
         <View style={styles.statusCard}>
           <Image
             source={getSafeBadge(currentLevel)}
@@ -78,7 +77,6 @@ export default function LevelScreen() {
           </Text>
         </View>
 
-        {/* তথ্য ব্যানার */}
         <View style={styles.infoBanner}>
           <Ionicons name="trending-up" size={24} color="#ffd54f" />
           <View style={styles.infoBannerTextWrap}>
@@ -94,7 +92,6 @@ export default function LevelScreen() {
           </View>
         </View>
 
-        {/* সব লেভেলের ব্যাজ গ্রিড */}
         <Text style={styles.sectionTitle}>
           সব লেভেল (Lv. 1 – Lv. {MAX_LEVEL})
         </Text>
@@ -137,7 +134,6 @@ export default function LevelScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#0b0b18' },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -152,9 +148,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-
   scrollContent: { paddingHorizontal: 16 },
-
   statusCard: {
     alignItems: 'center',
     borderWidth: 1.5,
@@ -173,7 +167,6 @@ const styles = StyleSheet.create({
   },
   referralText: { color: '#9aa0c7', fontSize: 13, marginTop: 6 },
   referralCount: { color: '#00e5ff', fontWeight: 'bold' },
-
   infoBanner: {
     flexDirection: 'row',
     borderWidth: 1.5,
@@ -192,7 +185,6 @@ const styles = StyleSheet.create({
   },
   infoBannerSubtitle: { color: '#cfd3ff', fontSize: 12, lineHeight: 18 },
   bonusHighlight: { color: '#00e676', fontWeight: 'bold' },
-
   sectionTitle: {
     color: '#fff',
     fontSize: 15,

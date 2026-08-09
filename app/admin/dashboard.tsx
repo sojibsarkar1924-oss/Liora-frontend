@@ -27,6 +27,23 @@ import {
 
 type Tab = 'payments' | 'withdraws';
 
+// ✅ তারিখ + সময় একসাথে ফরম্যাট করার হেল্পার ফাংশন
+function formatDateTime(dateInput: string | undefined) {
+  if (!dateInput) return '-';
+  const d = new Date(dateInput);
+  const datePart = d.toLocaleDateString('bn-BD', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  const timePart = d.toLocaleTimeString('bn-BD', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${datePart}, ${timePart}`;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { userToken, userData, logout } = useContext(AuthContext) as any;
@@ -170,7 +187,7 @@ export default function AdminDashboard() {
           { label: '📱 মেথড',    value: item.method || 'Bkash' },
           { label: '📞 নম্বর',   value: item.senderNumber || '-' },
           { label: '🔖 TrxID',   value: item.trxId || '-', highlight: true },
-          { label: '📅 তারিখ',   value: item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-' },
+          { label: '📅 তারিখ ও সময়', value: formatDateTime(item.createdAt) },
           { label: '📋 রেফার',   value: item.userId?.referralCode || '-' },
         ].map((info, i) => (
           <View key={i} style={styles.infoItem}>
@@ -227,7 +244,7 @@ export default function AdminDashboard() {
           {[
             { label: '📱 মেথড',   value: item.method || '-' },
             { label: '📞 নম্বর',  value: item.number || '-' },
-            { label: '📅 তারিখ',  value: item.createdAt ? new Date(item.createdAt).toLocaleDateString('bn-BD') : '-' },
+            { label: '📅 তারিখ ও সময়',  value: formatDateTime(item.createdAt) },
             { label: '📊 স্ট্যাটাস', value: item.status || '-',
               highlight: item.status === 'Pending' },
           ].map((info, i) => (

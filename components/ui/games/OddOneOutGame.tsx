@@ -1,28 +1,16 @@
 /**
- * components/games/MathPuzzleGame.tsx
- * "অড ওয়ান আউট" পাজল — একগুচ্ছ একই রকম আইকনের মধ্যে যেটা আলাদা,
- * সেটা খুঁজে বের করতে হবে।
- *
- * আপডেট: এখন একই সেশনের ৫ রাউন্ডে কোনো ইমোজি-জোড়া দুইবার আসবে না।
- * সেশন শুরুতে ৮টা জোড়া থেকে ৫টা এলোমেলোভাবে বেছে (শাফল করে) নেওয়া হয়,
- * তারপর প্রতিটা রাউন্ডে একটা করে ব্যবহার হয়।
- *
- * ব্যবহার:
- *   import MathPuzzleGame from '../components/games/MathPuzzleGame';
- *   <MathPuzzleGame
- *     rewardAmount={5}
- *     onWin={(reward) => { /* এখানে ব্যালেন্স আপডেট করুন *\/ }}
- *   />
+ * components/ui/games/OddOneOutGame.tsx
+ * "অড ওয়ান আউট" পাজল — সম্পূর্ণ আসল কোড (placeholder না)।
+ * একগুচ্ছ একই রকম আইকনের মধ্যে যেটা আলাদা, সেটা খুঁজে বের করতে হবে।
+ * একই সেশনের ৫ রাউন্ডে কোনো ইমোজি-জোড়া দুইবার আসে না।
  */
 
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const TOTAL_ROUNDS = 5; // প্রতি সেশনে ৫ রাউন্ড
-const GRID_SIZE = 9; // ৩x৩ গ্রিড (৮টা একই রকম + ১টা ভিন্ন)
+const TOTAL_ROUNDS = 5;
+const GRID_SIZE = 9; // ৩x৩ গ্রিড
 
-// একই ক্যাটাগরির কাছাকাছি ইমোজি জোড়া — একটা "মূল" (common) আরেকটা "ভিন্ন" (odd)
-// এখানে অন্তত TOTAL_ROUNDS (৫) টা জোড়া থাকা আবশ্যক, নাহলে রিপিট এড়ানো যাবে না
 const EMOJI_PAIRS: { common: string; odd: string }[] = [
   { common: '🍎', odd: '🍏' },
   { common: '🐶', odd: '🐱' },
@@ -51,8 +39,6 @@ function shuffleArray<T>(array: T[]): T[] {
   return arr;
 }
 
-// সেশনের শুরুতে একবার কল হয় — TOTAL_ROUNDS সংখ্যক আলাদা জোড়া বেছে নেয়,
-// প্রতিটার জন্য একটা random oddIndex ঠিক করে দেয়
 function generateSessionRounds(): Round[] {
   const roundsCount = Math.min(TOTAL_ROUNDS, EMOJI_PAIRS.length);
   const shuffledPairs = shuffleArray(EMOJI_PAIRS).slice(0, roundsCount);
@@ -63,16 +49,16 @@ function generateSessionRounds(): Round[] {
   }));
 }
 
-type MathPuzzleGameProps = {
+type OddOneOutGameProps = {
   onWin?: (reward: number) => void;
   rewardAmount?: number;
 };
 
-export default function MathPuzzleGame({
+export default function OddOneOutGame({
   onWin = () => {},
   rewardAmount = 5,
-}: MathPuzzleGameProps) {
-  const [round, setRound] = useState(1); // ১-ভিত্তিক, ইউজারকে দেখানোর জন্য
+}: OddOneOutGameProps) {
+  const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
   const [sessionRounds, setSessionRounds] = useState<Round[]>(
     generateSessionRounds()
@@ -103,7 +89,7 @@ export default function MathPuzzleGame({
   };
 
   const finishGame = (finalScore: number) => {
-    const passed = finalScore >= Math.ceil(sessionRounds.length * 0.6); // ৬০%+ সঠিক হলে পাস
+    const passed = finalScore >= Math.ceil(sessionRounds.length * 0.6);
     Alert.alert(
       passed ? 'অভিনন্দন! 🎉' : 'আবার চেষ্টা করুন',
       `আপনি ${sessionRounds.length} টির মধ্যে ${finalScore} টি সঠিক দিয়েছেন।`,
@@ -122,7 +108,7 @@ export default function MathPuzzleGame({
   const resetGame = () => {
     setRound(1);
     setScore(0);
-    setSessionRounds(generateSessionRounds()); // নতুন সেশন — নতুন ৫টা জোড়া
+    setSessionRounds(generateSessionRounds());
     setSelectedIndex(null);
     setIsLocked(false);
   };
@@ -194,19 +180,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cellCorrect: {
-    borderColor: '#00e676',
-    backgroundColor: '#0f2e1e',
-  },
-  cellWrong: {
-    borderColor: '#ff5252',
-    backgroundColor: '#2e0f0f',
-  },
+  cellCorrect: { borderColor: '#00e676', backgroundColor: '#0f2e1e' },
+  cellWrong: { borderColor: '#ff5252', backgroundColor: '#2e0f0f' },
   cellText: { fontSize: 34 },
-  scoreText: {
-    marginTop: 20,
-    color: '#00e5ff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  scoreText: { marginTop: 20, color: '#00e5ff', fontSize: 16, fontWeight: 'bold' },
 });
