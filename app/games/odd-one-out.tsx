@@ -1,8 +1,6 @@
 /**
  * app/games/odd-one-out.tsx
- * "অড ওয়ান আউট" গেমের রুট — আসল গেমের কোড
- * components/ui/games/OddOneOutGame.tsx এ আছে, এই ফাইল শুধু
- * সেটাকে হেডার সহ দেখায়।
+ * "অড ওয়ান আউট" গেমের রুট — এখন জিতলে আসল ব্যালেন্সে টাকা যোগ হয়।
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -10,13 +8,15 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import OddOneOutGame from '../../components/ui/games/OddOneOutGame';
+import { useBalance } from '../../context/BalanceContext';
 
 export default function OddOneOutScreen() {
   const router = useRouter();
+  const { addEarning } = useBalance();
 
-  const handleWin = (reward: number) => {
-    // এখানে আসল ব্যালেন্স-আপডেট লজিক বসাবেন (ব্যাকএন্ড/state/context)
-    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন।`);
+  const handleWin = async (reward: number) => {
+    await addEarning(reward);
+    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন। ব্যালেন্সে যোগ হয়েছে।`);
   };
 
   return (

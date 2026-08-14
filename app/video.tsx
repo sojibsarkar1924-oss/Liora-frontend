@@ -1,7 +1,6 @@
 /**
  * app/video.tsx
- * "ভিডিও দেখুন" রুট — আসল কোড এখন components/ui/games/VideoTask.tsx
- * এ আছে, এই ফাইল শুধু হেডার সহ সেটাকে দেখায়।
+ * "ভিডিও দেখুন" রুট — এখন জিতলে আসল ব্যালেন্সে টাকা যোগ হয়।
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -9,13 +8,15 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import VideoTask from '../components/ui/games/VideoTask';
+import { useBalance } from '../context/BalanceContext';
 
 export default function VideoScreen() {
   const router = useRouter();
+  const { addEarning } = useBalance();
 
-  const handleWin = (reward: number) => {
-    // এখানে আসল ব্যালেন্স-আপডেট লজিক বসাবেন (ব্যাকএন্ড/state/context)
-    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন।`);
+  const handleWin = async (reward: number) => {
+    await addEarning(reward);
+    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন। ব্যালেন্সে যোগ হয়েছে।`);
   };
 
   return (

@@ -1,7 +1,6 @@
 /**
  * app/games/memory.tsx
- * "মেমরি ম্যাচ" গেমের রুট — আসল গেমের কোড components/ui/games/MemoryMatchGame.tsx
- * এ আছে, এই ফাইল শুধু সেটাকে হেডার সহ দেখায়।
+ * "মেমরি ম্যাচ" গেমের রুট — এখন জিতলে আসল ব্যালেন্সে টাকা যোগ হয়।
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -9,13 +8,15 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MemoryMatchGame from '../../components/ui/games/MemoryMatchGame';
+import { useBalance } from '../../context/BalanceContext';
 
 export default function MemoryGameScreen() {
   const router = useRouter();
+  const { addEarning } = useBalance();
 
-  const handleWin = (reward: number) => {
-    // এখানে আসল ব্যালেন্স-আপডেট লজিক বসাবেন (ব্যাকএন্ড/state/context)
-    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন।`);
+  const handleWin = async (reward: number) => {
+    await addEarning(reward);
+    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন। ব্যালেন্সে যোগ হয়েছে।`);
   };
 
   return (

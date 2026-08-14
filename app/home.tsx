@@ -24,6 +24,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useBalance } from '../context/BalanceContext';
 
 // আপনার ডাইনামিক ব্যাজ এসেটস
 import badgeAssets from '../constants/badgeAssets';
@@ -34,13 +35,14 @@ import badgeAssets from '../constants/badgeAssets';
 // বাকি আইকনগুলো — এগুলো অ্যাপের নিজস্ব ব্র্যান্ডিং, সব ইউজারের জন্য একই
 // (নিশ্চিত করুন এই ৮টা PNG assets/images/icons/ ফোল্ডারে আছে)
 const logoArrow = require('../assets/images/icons/logo-arrow.png');
-const iconMoneybag = require('../assets/images/icons/icon_moneybag.png');
-const iconWalletSmall = require('../assets/images/icons/icon_wallet_small.png');
-const iconGG = require('../assets/images/icons/icon_gg.png');
-const iconGame = require('../assets/images/icons/icon_game.png');
-const iconCaptcha = require('../assets/images/icons/icon_captcha.png');
-const iconVideo = require('../assets/images/icons/icon_video.png');
-const iconRefer = require('../assets/images/icons/icon_refer.png');
+const iconMoneybag = require('../assets/images/icons/icon-moneybag.png');
+const iconWalletSmall = require('../assets/images/icons/icon-wallet-small.png');
+const iconGG = require('../assets/images/icons/icon-gg.png');
+const iconGame = require('../assets/images/icons/icon-game.png');
+const iconCaptcha = require('../assets/images/icons/icon-captcha.png');
+const iconVideo = require('../assets/images/icons/icon-video.png');
+const iconRefer = require('../assets/images/icons/icon-refer.png');
+
 // ---------- locale-নির্ভর নয় এমন বাংলা সংখ্যা কনভার্টার ----------
 const BENGALI_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
 
@@ -135,9 +137,8 @@ export default function HomeScreen({ userProfileImageUri = null }: HomeScreenPro
   // পরে যখন ব্যাকএন্ড/ডাটাবেস থেকে আসল রেফার-সংখ্যা আনার সিস্টেম বসাবেন,
   // userLevel = আপনার state/API থেকে আসা আসল মান দিয়ে replace করবেন।
   const userLevel = 1;
-  const currentBalance = 1500;
-  const todaysEarning = 500;
-  const totalEarning = 9000;
+  // আসল ব্যালেন্স এখন BalanceContext থেকে আসে — আর হার্ডকোড না
+  const { balance: currentBalance, todaysEarning, totalEarning } = useBalance();
 
   // ইউজার নিজের ছবি দিয়ে থাকলে Image দেখাবে, নাহলে নিচে person আইকন fallback (JSX অংশে)
 

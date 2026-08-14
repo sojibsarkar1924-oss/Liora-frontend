@@ -1,10 +1,10 @@
 /**
  * app/games/index.tsx
- * এটাই "/games" রুটের প্রধান পেজ — ইউজার হোম থেকে "গেম খেলুন" চাপলে
- * প্রথমে এই পেজ খুলবে, এখান থেকে দুটো গেমের একটা বেছে নেবে।
+ * এটাই "/games" রুটের প্রধান পেজ।
+ * আপডেট: "অড ওয়ান আউট"-এর eye আইকন এখন brain (মাইন্ড) আইকন।
  */
 
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -41,7 +41,7 @@ export default function GamesHomeScreen() {
           activeOpacity={0.85}
           onPress={() => router.push('/games/odd-one-out' as any)}
         >
-          <Ionicons name="eye-outline" size={36} color="#c026d3" />
+          <MaterialCommunityIcons name="brain" size={36} color="#c026d3" />
           <View style={styles.gameCardTextWrap}>
             <Text style={styles.gameCardTitle}>অড ওয়ান আউট</Text>
             <Text style={styles.gameCardSubtitle}>ভিন্ন আইকনটা খুঁজে বের করুন</Text>

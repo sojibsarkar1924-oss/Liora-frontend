@@ -1,7 +1,6 @@
 /**
  * app/captcha.tsx
- * "ক্যাপচা পূরণ করুন" রুট — আসল কোড এখন components/ui/games/CaptchaTask.tsx
- * এ আছে, এই ফাইল শুধু হেডার সহ সেটাকে দেখায়।
+ * "ক্যাপচা পূরণ করুন" রুট — এখন জিতলে আসল ব্যালেন্সে টাকা যোগ হয়।
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -9,13 +8,15 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CaptchaTask from '../components/ui/games/CaptchaTask';
+import { useBalance } from '../context/BalanceContext';
 
 export default function CaptchaScreen() {
   const router = useRouter();
+  const { addEarning } = useBalance();
 
-  const handleWin = (reward: number) => {
-    // এখানে আসল ব্যালেন্স-আপডেট লজিক বসাবেন (ব্যাকএন্ড/state/context)
-    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন।`);
+  const handleWin = async (reward: number) => {
+    await addEarning(reward);
+    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন। ব্যালেন্সে যোগ হয়েছে।`);
   };
 
   return (
