@@ -23,8 +23,6 @@ const MIN_WITHDRAW = 1290; // ন্যূনতম উইথড্র পরি
 
 const METHODS = [
   { key: 'bkash', label: 'bKash' },
-  { key: 'nagad', label: 'Nagad' },
-  { key: 'rocket', label: 'Rocket' },
 ];
 
 function formatMoney(amount: number) {
