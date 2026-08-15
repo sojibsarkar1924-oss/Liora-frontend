@@ -1,6 +1,6 @@
 /**
  * app/captcha.tsx
- * "ক্যাপচা পূরণ করুন" রুট — এখন জিতলে আসল ব্যালেন্সে টাকা যোগ হয়।
+ * এখন দিনে একবারই সম্পন্ন করে ৳৮ পাওয়া যাবে।
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -12,11 +12,17 @@ import { useBalance } from '../context/BalanceContext';
 
 export default function CaptchaScreen() {
   const router = useRouter();
-  const { addEarning } = useBalance();
+  const { addTaskEarning, isTaskDoneToday } = useBalance();
+  const alreadyDone = isTaskDoneToday('captcha');
 
   const handleWin = async (reward: number) => {
-    await addEarning(reward);
-    Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন। ব্যালেন্সে যোগ হয়েছে।`);
+    const success = await addTaskEarning('captcha', reward);
+    if (success) {
+      Alert.alert('অভিনন্দন!', `আপনি ৳${reward} জিতেছেন। ব্যালেন্সে যোগ হয়েছে।`);
+    } else {
+      Alert.alert('আজকের জন্য শেষ', 'ক্যাপচা থেকে আজ ইতিমধ্যে আয় করেছেন। কাল আবার আসুন।');
+    }
+    router.back();
   };
 
   return (
@@ -29,7 +35,17 @@ export default function CaptchaScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <CaptchaTask rewardAmount={8} onWin={handleWin} />
+      {alreadyDone ? (
+        <View style={styles.doneBox}>
+          <Ionicons name="checkmark-circle" size={64} color="#00e676" />
+          <Text style={styles.doneTitle}>আজকের জন্য সম্পন্ন!</Text>
+          <Text style={styles.doneSubtitle}>
+            আপনি আজ ইতিমধ্যে ৳৮ আয় করেছেন ক্যাপচা থেকে। কাল আবার আসুন।
+          </Text>
+        </View>
+      ) : (
+        <CaptchaTask rewardAmount={8} onWin={handleWin} />
+      )}
     </SafeAreaView>
   );
 }
@@ -45,4 +61,7 @@ const styles = StyleSheet.create({
   },
   backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  doneBox: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
+  doneTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: 16 },
+  doneSubtitle: { color: '#9aa0c7', fontSize: 13, marginTop: 8, textAlign: 'center' },
 });

@@ -1,12 +1,7 @@
 /**
  * app/level.tsx
- * হোম পেজের লেভেল ব্যাজে ট্যাপ করলে এই স্ক্রিন খুলবে।
- * Lv.1 থেকে Lv.50 পর্যন্ত সব ব্যাজ দেখাবে, বর্তমান লেভেল হাইলাইট থাকবে,
- * এবং রেফার সংখ্যা + "লেভেল বাড়লে আয় বাড়বে" ব্যানার দেখাবে।
- *
- * ব্যবহারের আগে করণীয়:
- * - নিশ্চিত করুন constants/badgeAssets.ts ফাইলে ৫০টা ব্যাজের require() ঠিকমতো আছে
- * - নিশ্চিত করুন assets/images/badges/ ফোল্ডারে badge_1.png থেকে badge_50.png আছে
+ * আপডেট: রেফার বোনাস (৳৫০) ও লেভেল বোনাস (৳১০) এখন স্পষ্টভাবে
+ * হাইলাইট করা — বড় করে, আলাদা রঙিন কার্ডে দেখানো হচ্ছে।
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +25,8 @@ const ITEM_MARGIN = 8;
 const ITEM_SIZE = (width - 32 - ITEM_MARGIN * 2 * GRID_COLUMNS) / GRID_COLUMNS;
 
 const MAX_LEVEL = 50;
-const LEVEL_UP_BONUS = 10;
+const LEVEL_UP_BONUS = 10; // প্রতি লেভেলে ৳১০
+const REFERRAL_BONUS = 50; // প্রতি সফল রেফারে ৳৫০
 
 const ALL_LEVELS: number[] = [];
 for (let i = 1; i <= MAX_LEVEL; i++) {
@@ -45,8 +41,6 @@ function getSafeBadge(level: number) {
 export default function LevelScreen() {
   const router = useRouter();
 
-  // ডেমো ডেটা — bastob অবস্থায় নতুন ইউজারের লেভেল ১ ও রেফার ০ হওয়ার কথা।
-  // পরে ব্যাকএন্ড থেকে আসল মান আনবেন।
   const currentLevel = 1;
   const referralCount = 0;
 
@@ -64,6 +58,7 @@ export default function LevelScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* বর্তমান স্ট্যাটাস কার্ড */}
         <View style={styles.statusCard}>
           <Image
             source={getSafeBadge(currentLevel)}
@@ -77,21 +72,40 @@ export default function LevelScreen() {
           </Text>
         </View>
 
+        {/* ---------- বোনাস হাইলাইট — নতুন, বড় করে দেখানো ---------- */}
+        <Text style={styles.bonusSectionTitle}>💰 বোনাস অফার</Text>
+        <View style={styles.bonusRow}>
+          <View style={[styles.bonusCard, styles.bonusCardReferral]}>
+            <Ionicons name="people" size={28} color="#00e676" />
+            <Text style={styles.bonusAmount}>৳{REFERRAL_BONUS}</Text>
+            <Text style={styles.bonusLabel}>রেফার বোনাস</Text>
+            <Text style={styles.bonusSubLabel}>প্রতি বন্ধুতে</Text>
+          </View>
+
+          <View style={[styles.bonusCard, styles.bonusCardLevel]}>
+            <Ionicons name="trending-up" size={28} color="#ffd54f" />
+            <Text style={styles.bonusAmount}>৳{LEVEL_UP_BONUS}</Text>
+            <Text style={styles.bonusLabel}>লেভেল বোনাস</Text>
+            <Text style={styles.bonusSubLabel}>প্রতি লেভেলে</Text>
+          </View>
+        </View>
+
+        {/* তথ্য ব্যানার */}
         <View style={styles.infoBanner}>
-          <Ionicons name="trending-up" size={24} color="#ffd54f" />
+          <Ionicons name="information-circle" size={22} color="#00e5ff" />
           <View style={styles.infoBannerTextWrap}>
-            <Text style={styles.infoBannerTitle}>
-              আপনার লেভেল যত বাড়বে, আয় তত বাড়বে!
-            </Text>
+            <Text style={styles.infoBannerTitle}>কীভাবে কাজ করে?</Text>
             <Text style={styles.infoBannerSubtitle}>
-              নিজের রেফার কোড দিয়ে যত বেশি বন্ধু নতুন অ্যাকাউন্ট খুলবে, আপনার
-              লেভেল তত দ্রুত বাড়বে এবং প্রতি লেভেলে{' '}
-              <Text style={styles.bonusHighlight}>৳{LEVEL_UP_BONUS}</Text>{' '}
-              বোনাস পাবেন!
+              নিজের রেফার কোড দিয়ে বন্ধু নতুন অ্যাকাউন্ট খুললে আপনি সাথে সাথে{' '}
+              <Text style={styles.bonusHighlightInline}>৳{REFERRAL_BONUS}</Text> পাবেন,
+              আর আপনার লেভেলও ১ বাড়বে — লেভেল বাড়লে আরও{' '}
+              <Text style={styles.bonusHighlightInline}>৳{LEVEL_UP_BONUS}</Text> বোনাস
+              পাবেন। এই দুইটা বোনাসের কোনো দৈনিক সীমা নেই!
             </Text>
           </View>
         </View>
 
+        {/* সব লেভেলের ব্যাজ গ্রিড */}
         <Text style={styles.sectionTitle}>
           সব লেভেল (Lv. 1 – Lv. {MAX_LEVEL})
         </Text>
@@ -141,14 +155,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   scrollContent: { paddingHorizontal: 16 },
+
   statusCard: {
     alignItems: 'center',
     borderWidth: 1.5,
@@ -156,7 +166,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 20,
     backgroundColor: '#12132a',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   currentBadgeImage: { width: 100, height: 100 },
   currentLevelText: {
@@ -167,24 +177,66 @@ const styles = StyleSheet.create({
   },
   referralText: { color: '#9aa0c7', fontSize: 13, marginTop: 6 },
   referralCount: { color: '#00e5ff', fontWeight: 'bold' },
+
+  bonusSectionTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  bonusRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  bonusCard: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingVertical: 20,
+    borderWidth: 2,
+  },
+  bonusCardReferral: {
+    backgroundColor: '#0f2e1e',
+    borderColor: '#00e676',
+  },
+  bonusCardLevel: {
+    backgroundColor: '#2a2408',
+    borderColor: '#ffd54f',
+  },
+  bonusAmount: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  bonusLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  bonusSubLabel: {
+    color: '#9aa0c7',
+    fontSize: 11,
+    marginTop: 2,
+  },
+
   infoBanner: {
     flexDirection: 'row',
     borderWidth: 1.5,
-    borderColor: '#ffb300',
+    borderColor: '#00e5ff',
     borderRadius: 14,
     padding: 14,
-    backgroundColor: '#1a1608',
+    backgroundColor: '#0a1f24',
     marginBottom: 20,
   },
   infoBannerTextWrap: { flex: 1, marginLeft: 10 },
   infoBannerTitle: {
-    color: '#ffd54f',
+    color: '#00e5ff',
     fontWeight: 'bold',
     fontSize: 14,
     marginBottom: 4,
   },
   infoBannerSubtitle: { color: '#cfd3ff', fontSize: 12, lineHeight: 18 },
-  bonusHighlight: { color: '#00e676', fontWeight: 'bold' },
+  bonusHighlightInline: { color: '#00e676', fontWeight: 'bold', fontSize: 13 },
+
   sectionTitle: {
     color: '#fff',
     fontSize: 15,

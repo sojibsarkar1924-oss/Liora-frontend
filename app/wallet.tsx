@@ -8,18 +8,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useBalance } from '../context/BalanceContext';
 
-const MIN_WITHDRAW = 100; // ন্যূনতম উইথড্র পরিমাণ (প্রয়োজনমতো বদলান)
+const MIN_WITHDRAW = 1290; // ন্যূনতম উইথড্র পরিমাণ (ইউজারের অনুরোধে ১২৯০ করা হয়েছে)
 
 const METHODS = [
   { key: 'bkash', label: 'bKash' },
