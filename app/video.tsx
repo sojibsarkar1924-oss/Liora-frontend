@@ -1,28 +1,3 @@
-/**
- * app/video.tsx
- *
- * এটা Gemini-এর দেওয়া UI ডিজাইন (৩টা আলাদা এড কার্ড, ফুলস্ক্রিন
- * মোডাল প্লেয়ার) রেখে, কিন্তু আমাদের আসল BalanceContext-এর সাথে
- * সঠিকভাবে সংযুক্ত করে ঠিক করা হয়েছে।
- *
- * যা বদলানো হয়েছে:
- * 1) useBalance() থেকে এখন সঠিক ফাংশন ব্যবহার হচ্ছে
- *    (addTaskEarning, isTaskDoneToday) — আগের addEarnings/
- *    dailyVideoCount/setDailyVideoCount আমাদের context-এ নেই বলে
- *    কাজ করছিল না।
- * 2) দৈনিক সীমা এখন BalanceContext-এর মাধ্যমেই ট্র্যাক হয় (একই
- *    জায়গা থেকে মেমরি/ক্যাপচা/অড-ওয়ান-আউটও ট্র্যাক হয়) — আলাদা
- *    কোনো duplicate সিস্টেম নেই।
- * 3) ৩টা ভিডিও শেষ হওয়ার "অগ্রগতি" (progress) স্থানীয়ভাবে
- *    AsyncStorage-এ থাকে (শুধু UI-এর জন্য, টাকার হিসাব না),
- *    কিন্তু আসল ৳৯ টাকা শুধু ৩টা ভিডিও শেষ হলে *একবারে*
- *    addTaskEarning('video', 9) দিয়ে যোগ হয় — এতে দৈনিক ৳২৭
- *    সীমার হিসাব ঠিক থাকে (Gemini-এর ভার্সনে প্রতি ভিডিওতে ৳৩
- *    করে আলাদাভাবে যোগ হতো, যেটা আমাদের capping সিস্টেমের সাথে
- *    মেলে না)।
- * 4) selfAlign টাইপো ঠিক করে alignSelf করা হয়েছে।
- */
-
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AVPlaybackStatus, ResizeMode, Video } from 'expo-av';
@@ -42,27 +17,42 @@ import { useBalance } from '../context/BalanceContext';
 
 const { width } = Dimensions.get('window');
 
-const AD_DATABASE = [
-  { id: 1, title: 'স্পন্সরড এড ১: টেকনোলজি ও স্মার্ট ডিভাইস', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4' },
-  { id: 2, title: 'স্পন্সরড এড ২: ডিজিটাল গ্যাজেট অফার', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4' },
-  { id: 3, title: 'স্পন্সরড এড ৩: গেমিং এক্সপেরিয়েন্স অ্যাপ', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4' },
-  { id: 4, title: 'স্পন্সরড এড ৪: ট্রাভেল ও লাইফস্টাইল প্রমো', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4' },
-  { id: 5, title: 'স্পন্সরড এড ৫: প্রিমিয়াম সাউন্ড সিস্টেম', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4' },
-  { id: 6, title: 'স্পন্সরড এড ৬: অনলাইন শপিং স্পেশাল', url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4' },
+// বিভিন্ন প্রমোশনাল ভিডিওর লিস্ট
+const SAMPLE_VIDEOS = [
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
 ];
 
-const PROGRESS_KEY = '@video_watch_progress'; // শুধু "কতটা দেখা হয়েছে" — টাকার হিসাব না
+// ডেটাবেজ যা প্রতিদিন অটো-জেনারেট ৩টি আলাদা এড নির্বাচন করবে
+const AD_DATABASE = [
+  { id: 1, title: 'টেকনোলজি ও স্মার্ট ডিভাইস প্রমো', url: SAMPLE_VIDEOS[0] },
+  { id: 2, title: 'ডিজিটাল গ্যাজেট বিশেষ অফার', url: SAMPLE_VIDEOS[1] },
+  { id: 3, title: 'গেমিং এক্সপেরিয়েন্স অ্যাপ', url: SAMPLE_VIDEOS[2] },
+  { id: 4, title: 'ট্রাভেল ও লাইফস্টাইল প্রমো', url: SAMPLE_VIDEOS[3] },
+  { id: 5, title: 'প্রিমিয়াম সাউন্ড সিস্টেম', url: SAMPLE_VIDEOS[4] },
+  { id: 6, title: 'অনলাইন শপিং স্পেশাল সেল', url: SAMPLE_VIDEOS[5] },
+  { id: 7, title: 'স্মার্টফোন ও এক্সেসরিজ রিভিউ', url: SAMPLE_VIDEOS[0] },
+  { id: 8, title: 'অনলাইন কোর্স ও স্কিল ডেভেলপমেন্ট', url: SAMPLE_VIDEOS[1] },
+  { id: 9, title: 'বেস্ট ফ্যাশন ব্র্যান্ড ডিল', url: SAMPLE_VIDEOS[2] },
+];
+
+const PROGRESS_KEY = '@video_watch_progress';
 
 function getTodayString(): string {
   const now = new Date();
   return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
 }
 
-function getTodaysAds(): typeof AD_DATABASE {
+function getTodaysAds() {
   const today = new Date();
   const dayOfYear = Math.floor(
     (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000
   );
+  // প্রতিদিনের জন্য ৩টি ভিন্ন ভিডিওর সূচক (Index) নির্বাচন
   const startIndex = (dayOfYear * 3) % AD_DATABASE.length;
   return [
     AD_DATABASE[startIndex % AD_DATABASE.length],
@@ -78,14 +68,13 @@ export default function VideoScreen() {
   const alreadyEarnedToday = isTaskDoneToday('video');
 
   const [dailyAds] = useState(() => getTodaysAds());
-  const [watchedProgress, setWatchedProgress] = useState(0); // ০-৩, শুধু UI progress
+  const [watchedProgress, setWatchedProgress] = useState(0);
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [videoFinished, setVideoFinished] = useState(false);
   const videoRef = useRef<Video>(null);
 
-  // আজকের progress লোড করা (নতুন দিন হলে রিসেট)
   useEffect(() => {
     (async () => {
       try {
@@ -115,7 +104,7 @@ export default function VideoScreen() {
       Alert.alert('আজকের জন্য শেষ', 'আজ ইতিমধ্যে ভিডিও থেকে আয় করেছেন। কাল আবার আসুন।');
       return;
     }
-    if (index !== watchedProgress) return; // শুধু পরের ভিডিওই খোলা যাবে
+    if (index !== watchedProgress) return;
     setCurrentAdIndex(index);
     setVideoFinished(false);
     setLoading(true);
@@ -135,12 +124,10 @@ export default function VideoScreen() {
     await persistProgress(newProgress);
 
     if (newProgress >= 3) {
-      // ৩টাই শেষ — এখন আসল ৳৯ টাকা একবারে যোগ হবে
       const success = await addTaskEarning('video', 9);
       if (success) {
         Alert.alert('🎉 অভিনন্দন!', 'আপনি ৩টি ভিডিও দেখে ৳৯ টাকা পেয়েছেন। ব্যালেন্সে যোগ হয়েছে।');
       } else {
-        // এটা ঘটার কথা না (isTaskDoneToday আগেই চেক করা), তবু safety
         Alert.alert('দুঃখিত', 'আজকের জন্য এই আয় ইতিমধ্যে নেওয়া হয়ে গেছে।');
       }
       setModalVisible(false);
@@ -245,8 +232,15 @@ export default function VideoScreen() {
               source={{ uri: dailyAds[currentAdIndex].url }}
               style={styles.videoPlayer}
               resizeMode={ResizeMode.CONTAIN}
-              shouldPlay
+              shouldPlay={true}
+              isLooping={false}
               onLoad={() => setLoading(false)}
+              onLoadStart={() => setLoading(true)}
+              onError={(error) => {
+                setLoading(false);
+                console.error('Video Error:', error);
+                Alert.alert('ত্রুটি', 'ভিডিওটি লোড করা যাচ্ছে না। দয়া করে ইন্টারনেট সংযোগ চেক করুন।');
+              }}
               onPlaybackStatusUpdate={onPlaybackStatusUpdate}
             />
           )}
@@ -302,7 +296,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
-    alignSelf: 'flex-start', // ফিক্স: আগে ভুল করে selfAlign লেখা ছিল
+    alignSelf: 'flex-start',
     marginBottom: 6,
   },
   adBadgeText: { color: '#60a5fa', fontSize: 11, fontWeight: 'bold' },
