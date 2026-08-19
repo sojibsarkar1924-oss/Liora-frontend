@@ -1,19 +1,19 @@
 /**
  * components/ui/games/MemoryMatchGame.tsx
- * ৫-রাউন্ড মেমরি ম্যাচ গেম — Expo/React Native
+ * ৪×৪ মেমরি ম্যাচ গেম — Expo/React Native
  *
  * নিয়ম:
- *  - মোট ৫টি রাউন্ড খেলতে হবে
- *  - প্রতি রাউন্ডে ৩ জোড়া (৬টি) কার্ড থাকে, সবগুলো মেলাতে হবে রাউন্ড শেষ করতে
- *  - উপরে "রাউন্ড ১/৫", "রাউন্ড ২/৫" ... দেখানো হয়
- *  - ৫টি রাউন্ড শেষ হলে তবেই onWin(rewardAmount) একবার কল হয় —
- *    তাই নির্ধারিত রিওয়ার্ডের (ডিফল্ট ৳৫) বেশি কখনোই দেওয়া হয় না
+ *  - বোর্ড ৪×৪ (১৬টি কার্ড, ৮ জোড়া) — পুরো গেম জুড়ে এই একটাই বোর্ড
+ *  - প্রতি জোড়া মেলানো = ১ রাউন্ড সম্পন্ন
+ *  - উপরে "রাউন্ড ১/৫", "রাউন্ড ২/৫" ... "রাউন্ড ৫/৫" দেখানো হয়
+ *  - ৫টি জোড়া (৫ রাউন্ড) মিললেই গেম শেষ, ৳৫ রিওয়ার্ড একবারই দেওয়া হয়
+ *    (বাকি ৩ জোড়া অপ্রয়োজনীয়, বোর্ড লক হয়ে যায়)
  *
  * ব্যবহার:
  *   import MemoryMatchGame from '../../components/ui/games/MemoryMatchGame';
  *   <MemoryMatchGame
  *     rewardAmount={5}
- *     totalRounds={5}
+ *     roundsToWin={5}
  *     onWin={(reward) => { /* ব্যালেন্স আপডেট করুন *\/ }}
  *   />
  */
@@ -29,19 +29,22 @@ import {
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
+const BOARD_SIZE = 4; // ৪x৪ = ১৬ কার্ড (৮ জোড়া)
+const CARD_MARGIN = 6;
+const CARD_SIZE = (width - 40 - CARD_MARGIN * BOARD_SIZE * 2) / BOARD_SIZE;
 
-const COLUMNS = 3;              // প্রতি রাউন্ডে ৩ কলাম
-const ROWS = 2;                 // ২ সারি → মোট ৬টি কার্ড (৩ জোড়া)
-const CARDS_PER_ROUND = COLUMNS * ROWS;
-const CARD_MARGIN = 8;
-const CARD_SIZE = (width - 40 - CARD_MARGIN * COLUMNS * 2) / COLUMNS;
-
-// ✅ পুরো ৫ রাউন্ডের জন্য যথেষ্ট ইমোজি পুল — প্রতি রাউন্ডে ভিন্ন ৩টি প্রতীক ব্যবহার হবে
-const EMOJI_POOL: string[] = [
-  '🍎', '🍌', '🍇', '🍉', '🍓', '🍒', '🍑', '🥝',
-  '🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨',
-  '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱',
+// একাধিক ইমোজি সেট — প্রতিদিন ভিন্ন সেট দেখাতে ব্যবহার করা হয়, প্রতিটাতে ৮টি প্রতীক (৪x৪ বোর্ডের জন্য)
+const EMOJI_SETS: string[][] = [
+  ['🍎', '🍌', '🍇', '🍉', '🍓', '🍒', '🍑', '🥝'],
+  ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨'],
+  ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱'],
+  ['🚗', '🚕', '🚙', '🚌', '🚓', '🚑', '🚒', '🚲'],
 ];
+
+function getTodaysEmojiSet(): string[] {
+  const dayIndex = new Date().getDate() % EMOJI_SETS.length;
+  return EMOJI_SETS[dayIndex];
+}
 
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
@@ -61,86 +64,56 @@ type CardData = {
   isMatched: boolean;
 };
 
-// ✅ প্রতিটা রাউন্ডের জন্য আলাদা ডেক — round নাম্বার অনুযায়ী ভিন্ন ইমোজি সেট নেওয়া হয়
-function buildRoundDeck(round: number): CardData[] {
-  const pairsNeeded = CARDS_PER_ROUND / 2;
-  const startIndex = ((round - 1) * pairsNeeded) % EMOJI_POOL.length;
-
-  let symbols: string[] = [];
-  for (let i = 0; i < pairsNeeded; i++) {
-    symbols.push(EMOJI_POOL[(startIndex + i) % EMOJI_POOL.length]);
-  }
-
-  const doubled = symbols.concat(symbols);
-  const deck: CardData[] = doubled.map((symbol, index) => ({
+function buildDeck(): CardData[] {
+  const emojis = getTodaysEmojiSet(); // ৮টি প্রতীক
+  const doubled = emojis.concat(emojis); // ১৬টি কার্ড (৮ জোড়া)
+  const pairs: CardData[] = doubled.map((symbol, index) => ({
     id: index,
     symbol,
     isFlipped: false,
     isMatched: false,
   }));
-  return shuffleArray(deck);
+  return shuffleArray(pairs);
 }
 
 type MemoryMatchGameProps = {
   onWin?: (reward: number) => void;
   rewardAmount?: number;
-  totalRounds?: number;
+  roundsToWin?: number; // কতগুলো জোড়া মেলালে গেম জেতা হবে
 };
 
 export default function MemoryMatchGame({
   onWin = () => {},
   rewardAmount = 5,
-  totalRounds = 5,
+  roundsToWin = 5,
 }: MemoryMatchGameProps) {
-  const [round, setRound] = useState(1);
-  const [cards, setCards] = useState<CardData[]>(() => buildRoundDeck(1));
+  const [cards, setCards] = useState<CardData[]>(buildDeck());
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
-  const [matchedCount, setMatchedCount] = useState(0);
+  const [matchedCount, setMatchedCount] = useState(0); // এখন পর্যন্ত মেলানো জোড়া সংখ্যা
   const [gameFinished, setGameFinished] = useState(false);
 
-  const pairsPerRound = CARDS_PER_ROUND / 2;
+  // ✅ রাউন্ড কাউন্টার — matchedCount অনুযায়ী "১/৫ ... ৫/৫"
+  const currentRound = Math.min(matchedCount + 1, roundsToWin);
 
-  // ✅ একটা রাউন্ডের সব জোড়া মিলে গেলে এখানে ধরা হয়
   useEffect(() => {
     if (gameFinished) return;
-    if (cards.length > 0 && matchedCount === pairsPerRound) {
+    if (matchedCount >= roundsToWin) {
+      // ✅✅✅ ৫টি জোড়া (৫ রাউন্ড) সম্পন্ন — এখানেই একবারই রিওয়ার্ড দেওয়া হয় ✅✅✅
       const timeoutId = setTimeout(() => {
-        if (round < totalRounds) {
-          // ✅ পরের রাউন্ডে যাওয়া — এখনো কোনো টাকা দেওয়া হচ্ছে না
-          Alert.alert(
-            `রাউন্ড ${round}/${totalRounds} সম্পন্ন! ✅`,
-            'পরের রাউন্ড শুরু হচ্ছে...',
-            [
-              {
-                text: 'ঠিক আছে',
-                onPress: () => {
-                  const nextRound = round + 1;
-                  setRound(nextRound);
-                  setCards(buildRoundDeck(nextRound));
-                  setFlippedIndices([]);
-                  setMatchedCount(0);
-                  setIsLocked(false);
-                },
-              },
-            ]
-          );
-        } else {
-          // ✅ ৫টি রাউন্ডই শেষ — এখানে একবারই রিওয়ার্ড দেওয়া হচ্ছে,
-          // এর বেশি কোনোভাবেই দেওয়া হবে না কারণ onWin শুধু এখানেই কল হয়
-          setGameFinished(true);
-          Alert.alert(
-            'অভিনন্দন! 🎉',
-            `আপনি সবগুলো (${totalRounds}) রাউন্ড সম্পন্ন করেছেন, মোট চাল: ${moves + 1}। আপনি ৳${rewardAmount} জিতেছেন।`,
-            [
-              {
-                text: 'ঠিক আছে',
-                onPress: () => onWin(rewardAmount),
-              },
-            ]
-          );
-        }
+        setGameFinished(true);
+        setIsLocked(true);
+        Alert.alert(
+          'অভিনন্দন! 🎉',
+          `আপনি ৫ রাউন্ডই সম্পন্ন করেছেন (${moves} চালে)। আপনি ৳${rewardAmount} জিতেছেন।`,
+          [
+            {
+              text: 'ঠিক আছে',
+              onPress: () => onWin(rewardAmount),
+            },
+          ]
+        );
       }, 300);
       return () => clearTimeout(timeoutId);
     }
@@ -173,7 +146,7 @@ export default function MemoryMatchGame({
           });
           setFlippedIndices([]);
           setIsLocked(false);
-          setMatchedCount((c) => c + 1);
+          setMatchedCount((c) => c + 1); // ✅ এক জোড়া মিললেই পরের রাউন্ডে যাওয়া
         }, 500);
       } else {
         setTimeout(() => {
@@ -191,8 +164,7 @@ export default function MemoryMatchGame({
   };
 
   const resetGame = () => {
-    setRound(1);
-    setCards(buildRoundDeck(1));
+    setCards(buildDeck());
     setFlippedIndices([]);
     setMoves(0);
     setMatchedCount(0);
@@ -204,58 +176,36 @@ export default function MemoryMatchGame({
     <View style={styles.container}>
       <Text style={styles.title}>মেমরি ম্যাচ</Text>
 
-      {/* ✅ রাউন্ড কাউন্টার — এখানেই "১/৫, ২/৫..." দেখানো হচ্ছে */}
-      <Text style={styles.roundText}>রাউন্ড: {round}/{totalRounds}</Text>
+      {/* ✅ রাউন্ড কাউন্টার */}
+      <Text style={styles.roundText}>
+        রাউন্ড: {gameFinished ? roundsToWin : currentRound}/{roundsToWin}
+      </Text>
       <Text style={styles.subtitle}>চাল সংখ্যা: {moves}</Text>
 
-      {/* ✅ রাউন্ড প্রোগ্রেস ডট */}
-      <View style={styles.dotsRow}>
-        {Array.from({ length: totalRounds }).map((_, i) => (
-          <View
-            key={i}
+      <View style={styles.board}>
+        {cards.map((card, index) => (
+          <TouchableOpacity
+            key={card.id}
             style={[
-              styles.dot,
-              i < round - 1 || (i === round - 1 && gameFinished)
-                ? styles.dotDone
-                : i === round - 1
-                ? styles.dotActive
-                : styles.dotPending,
+              styles.card,
+              card.isFlipped || card.isMatched
+                ? styles.cardFlipped
+                : styles.cardHidden,
             ]}
-          />
+            onPress={() => handleCardPress(index)}
+            activeOpacity={0.8}
+            disabled={gameFinished}
+          >
+            <Text style={styles.cardText}>
+              {card.isFlipped || card.isMatched ? card.symbol : '?'}
+            </Text>
+          </TouchableOpacity>
         ))}
       </View>
 
-      {gameFinished ? (
-        <View style={styles.finishedBox}>
-          <Text style={styles.finishedText}>🎉 সব রাউন্ড সম্পন্ন! ৳{rewardAmount} জেতা হয়েছে।</Text>
-        </View>
-      ) : (
-        <View style={styles.board}>
-          {cards.map((card, index) => (
-            <TouchableOpacity
-              key={`${round}-${card.id}`}
-              style={[
-                styles.card,
-                card.isFlipped || card.isMatched
-                  ? styles.cardFlipped
-                  : styles.cardHidden,
-              ]}
-              onPress={() => handleCardPress(index)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.cardText}>
-                {card.isFlipped || card.isMatched ? card.symbol : '?'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {!gameFinished && (
-        <TouchableOpacity style={styles.resetButton} onPress={resetGame}>
-          <Text style={styles.resetButtonText}>প্রথম থেকে শুরু করুন</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity style={styles.resetButton} onPress={resetGame}>
+        <Text style={styles.resetButtonText}>নতুন করে খেলুন</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -274,7 +224,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   roundText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#00e5ff',
     marginBottom: 4,
@@ -282,21 +232,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#9aa0c7',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 18,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  dotDone: { backgroundColor: '#00e676' },
-  dotActive: { backgroundColor: '#00e5ff' },
-  dotPending: { backgroundColor: '#2a2c50' },
   board: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -323,18 +260,6 @@ const styles = StyleSheet.create({
   },
   cardText: {
     fontSize: CARD_SIZE * 0.45,
-  },
-  finishedBox: {
-    paddingHorizontal: 30,
-    paddingVertical: 40,
-    alignItems: 'center',
-  },
-  finishedText: {
-    color: '#00e676',
-    fontSize: 17,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    lineHeight: 26,
   },
   resetButton: {
     marginTop: 24,
