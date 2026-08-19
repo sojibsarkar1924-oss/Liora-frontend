@@ -6,7 +6,6 @@ import React, { useRef, useState } from 'react';
 import {
   Alert,
   Animated,
-  Linking,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -15,7 +14,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 const API_URL = 'https://liora-backend-nmx8.onrender.com/api';
@@ -206,43 +205,10 @@ const PrivacyModal = ({ visible, onClose }: { visible: boolean; onClose: () => v
   </Modal>
 );
 
-const HelpModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <Modal visible={visible} transparent animationType="slide">
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalCard}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Help & Support</Text>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close-circle" size={28} color={Colors.subText} />
-          </TouchableOpacity>
-        </View>
-
-        {[
-          { icon: 'logo-whatsapp', label: 'WhatsApp Support', sub: '+880 1812-323466', color: '#25D366', action: () => Linking.openURL('https://wa.me/8801812323466') },
-          { icon: 'mail-outline',  label: 'Email Support',    sub: 'support@winway.app', color: Colors.blue, action: () => Linking.openURL('mailto:support@winway.app') },
-          { icon: 'logo-facebook', label: 'Facebook Page',    sub: 'facebook.com/winway', color: '#1877F2', action: () => Linking.openURL('https://facebook.com') },
-        ].map((item, i) => (
-          <TouchableOpacity key={i} style={styles.helpItem} onPress={item.action}>
-            <View style={[styles.iconCircle, { backgroundColor: item.color + '20' }]}>
-              <Ionicons name={item.icon as any} size={22} color={item.color} />
-            </View>
-            <View style={{ marginLeft: 14 }}>
-              <Text style={styles.helpLabel}>{item.label}</Text>
-              <Text style={styles.helpSub}>{item.sub}</Text>
-            </View>
-            <Ionicons name="open-outline" size={16} color="#b2bec3" style={{ marginLeft: 'auto' }} />
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  </Modal>
-);
-
 export default function SettingsScreen() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showPrivacy,  setShowPrivacy]  = useState(false);
-  const [showHelp,     setShowHelp]     = useState(false);
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   React.useEffect(() => {
@@ -287,8 +253,7 @@ export default function SettingsScreen() {
           <SettingItem icon="shield-checkmark-outline" label="Privacy Policy"  sublabel="View our data policy"    iconBg="#F0FDF4" color={Colors.green}  delay={200} onPress={() => setShowPrivacy(true)} />
 
           <Text style={[styles.sectionLabel, { marginTop: 8 }]}>Support</Text>
-          <SettingItem icon="help-circle-outline" label="Help & Support"  sublabel="Contact us"          iconBg="#FFF7ED" color={Colors.orange} delay={300} onPress={() => setShowHelp(true)} />
-          <SettingItem icon="star-outline"        label="Rate the App"   sublabel="Leave us a review"   iconBg="#FFFBEB" color="#F59E0B"       delay={400} onPress={() => Alert.alert('Rating', 'Opening Play Store...')} />
+          <SettingItem icon="star-outline"        label="Rate the App"   sublabel="Leave us a review"   iconBg="#FFFBEB" color="#F59E0B"       delay={300} onPress={() => Alert.alert('Rating', 'Opening Play Store...')} />
 
           <Text style={[styles.sectionLabel, { marginTop: 8 }]}>App Info</Text>
           <SettingItem
@@ -297,7 +262,7 @@ export default function SettingsScreen() {
             sublabel="v1.0.0"
             iconBg="#F5F3FF"
             color={Colors.purple}
-            delay={500}
+            delay={400}
             onPress={() => {}}
             rightElement={
               <View style={styles.versionBadge}>
@@ -307,7 +272,7 @@ export default function SettingsScreen() {
           />
 
           <Text style={[styles.sectionLabel, { marginTop: 8 }]}>Account</Text>
-          <SettingItem icon="log-out-outline" label="Logout" sublabel="Sign out of your account" iconBg="#FFF1F0" color={Colors.red} delay={600} onPress={handleLogout} />
+          <SettingItem icon="log-out-outline" label="Logout" sublabel="Sign out of your account" iconBg="#FFF1F0" color={Colors.red} delay={500} onPress={handleLogout} />
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Made with love in Bangladesh</Text>
@@ -318,7 +283,6 @@ export default function SettingsScreen() {
 
         <ChangePasswordModal visible={showPassword} onClose={() => setShowPassword(false)} />
         <PrivacyModal        visible={showPrivacy}  onClose={() => setShowPrivacy(false)} />
-        <HelpModal           visible={showHelp}     onClose={() => setShowHelp(false)} />
 
       </SafeAreaView>
     </LinearGradient>
@@ -353,7 +317,4 @@ const styles = StyleSheet.create({
   privacyText:  { color: Colors.subText, fontSize: 14, lineHeight: 24 },
   closeBtn:     { marginTop: 20, backgroundColor: Colors.blue, borderRadius: 14, padding: 15, alignItems: 'center' },
   closeBtnText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
-  helpItem:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  helpLabel:    { fontSize: 15, fontWeight: '700', color: Colors.primary },
-  helpSub:      { fontSize: 12, color: Colors.subText, marginTop: 2 },
 });

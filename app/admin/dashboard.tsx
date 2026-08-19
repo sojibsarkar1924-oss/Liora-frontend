@@ -57,7 +57,7 @@ export default function AdminDashboard() {
     pendingPayments: 0, approvedPayments: 0, pendingWithdraws: 0,
   });
 
-  // ✅ পাঠিয়ে দেন চাপার পর Confirm state track করার জন্য
+  // ✅ পাঠিয়ে দেন চাপার পর Confirm state track করার জন্য (শুধু in-flight UI feedback)
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
 
   const fetchAll = async (showLoader = true) => {
@@ -74,12 +74,27 @@ export default function AdminDashboard() {
       const wdList  = Array.isArray(wdData?.withdraws) ? wdData.withdraws :
                 Array.isArray(wdData?.data)       ? wdData.data      :
                 Array.isArray(wdData)             ? wdData           : [];
-    setPayments(payList.filter((p: any) => p.status === 'Pending'));
-      setWithdraws(wdList);
+
+      // ✅ পেমেন্টের মতো উইথড্রও শুধু Pending রাখা হচ্ছে —
+      // Approve/Reject হয়ে গেলে লিস্ট থেকে সাথে সাথে মুছে যাবে, পেইজ ক্লিন থাকবে
+      const pendingPayList = payList.filter((p: any) => p.status === 'Pending');
+      const pendingWdList  = wdList.filter((w: any) => w.status === 'Pending');
+
+      setPayments(pendingPayList);
+      setWithdraws(pendingWdList);
       setStats({
-        pendingPayments:  payList.filter((p: any) => p.status === 'Pending').length,
+        pendingPayments:  pendingPayList.length,
         approvedPayments: payList.filter((p: any) => p.status === 'Approved').length,
-        pendingWithdraws: wdList.filter((w: any)  => w.status === 'Pending').length,
+        pendingWithdraws: pendingWdList.length,
+      });
+
+      // ✅ রিফ্রেশের পর পুরনো "পাঠানো হয়েছে" ফ্ল্যাগ পরিষ্কার করা —
+      // যেসব আইডি আর pending list-এ নেই সেগুলো sentIds থেকেও সরিয়ে দেওয়া
+      setSentIds(prev => {
+        const stillPendingIds = new Set(pendingWdList.map((w: any) => w._id));
+        const next = new Set<string>();
+        prev.forEach(id => { if (stillPendingIds.has(id)) next.add(id); });
+        return next;
       });
     } catch {
       Alert.alert('ত্রুটি', 'ডাটা লোড হয়নি।');
@@ -100,7 +115,7 @@ export default function AdminDashboard() {
         try {
           await adminApprovePayment(id, userToken);
           Alert.alert('✅ সফল!', `${name} এর একাউন্ট সক্রিয় হয়েছে।`);
-          fetchAll(false);
+          fetchAll(false); // ✅ approve হলে সাথে সাথে লিস্ট থেকে মুছে যাবে
         } catch (e: any) { Alert.alert('❌ ব্যর্থ', e?.msg || 'সমস্যা হয়েছে।'); }
       }},
     ]);
@@ -120,7 +135,7 @@ export default function AdminDashboard() {
     ]);
   };
 
-  // ✅ নতুন flow: পাঠিয়ে দেন → নম্বর কপি + সাথে সাথে Approved + Confirm বাটন
+  // ✅ পাঠিয়ে দেন → নম্বর কপি + backend Approved + সাথে সাথে লিস্ট থেকে সরে যাবে
   const sendWithdraw = async (item: any) => {
     try {
       // ১. নম্বর কপি
@@ -129,14 +144,7 @@ export default function AdminDashboard() {
       // ২. সাথে সাথে backend Approved
       await adminWithdrawAction(item._id, 'Approved', userToken);
 
-      // ৩. বাটন Confirm এ পরিবর্তন
-      setSentIds(prev => {
-        const next = new Set(prev);
-        next.add(item._id);
-        return next;
-      });
-
-      // ৪. List refresh
+      // ৩. List রিফ্রেশ — এই আইটেম আর Pending না, তাই fetchAll নিজেই এটা লিস্ট থেকে সরিয়ে দেবে
       fetchAll(false);
 
     } catch (e: any) {
@@ -258,7 +266,7 @@ export default function AdminDashboard() {
         {item.status === 'Pending' && (
           <View>
             {isSent ? (
-              // ✅ পাঠানো হয়েছে — Confirm বাটন (disabled, শুধু দেখানোর জন্য)
+              // ✅ কল চলাকালীন in-flight ফিডব্যাক — fetchAll শেষ হলেই কার্ড লিস্ট থেকে সরে যাবে
               <View style={[styles.actionBtnFull, { backgroundColor: '#00B894', marginBottom: 8 }]}>
                 <Ionicons name="checkmark-circle-outline" size={18} color="white" />
                 <Text style={styles.actionBtnText}>✅ পাঠানো হয়েছে — Confirmed</Text>
@@ -267,7 +275,10 @@ export default function AdminDashboard() {
               // পাঠিয়ে দেন বাটন
               <TouchableOpacity
                 style={[styles.actionBtnFull, { backgroundColor: '#7c3aed', marginBottom: 8 }]}
-                onPress={() => sendWithdraw(item)}
+                onPress={() => {
+                  setSentIds(prev => new Set(prev).add(item._id)); // তাৎক্ষণিক UI ফিডব্যাক
+                  sendWithdraw(item);
+                }}
               >
                 <Ionicons name="send-outline" size={18} color="white" />
                 <Text style={styles.actionBtnText}>💸 পাঠিয়ে দেন</Text>

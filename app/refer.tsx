@@ -1,13 +1,8 @@
 /**
  * app/refer.tsx
  * আপডেট:
- * 1) রেফার বোনাস (৳৫০) হাইলাইট করা হয়েছে বড় করে
- * 2) "বন্ধুকে আমন্ত্রণ জানান" বাটন — এটা চাপলে লিংক+কোড সহ একটা
- *    ছোট্ট চিঠির মতো বার্তা তৈরি হয়ে ফোনের Share শীট (WhatsApp,
- *    SMS, Messenger যা-ই থাকুক) খুলে যাবে, বন্ধুকে সরাসরি পাঠানো যাবে।
- *
- * নোট: APP_DOWNLOAD_LINK এখনো একটা placeholder — আপনার অ্যাপ
- * Play Store এ পাবলিশ হলে সেই আসল লিংক এখানে বসিয়ে দেবেন।
+ * 1) "আমার আয়" বদলে "WinWay" করা হয়েছে।
+ * 2) অকার্যকর ডোমেইনের জায়গায় আসল APK ডাউনলোড লিংক বসানো হয়েছে।
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -29,8 +24,8 @@ const REFER_CODE_KEY = 'liora_refer_code_v1';
 const REFERRAL_BONUS = 50;
 const LEVEL_UP_BONUS = 10;
 
-// পরে Play Store এ পাবলিশ হলে আসল লিংক বসাবেন
-const APP_DOWNLOAD_LINK = 'https://liora.app/download';
+// ✅ আপনার কাজ করা আসল APK ডাউনলোড লিংক (ভবিষ্যতে Bitly বা Play Store লিংক হলে এখানে বসাবেন)
+const APP_DOWNLOAD_LINK = 'https://expo.dev/artifacts/eas/aYJSk40HeG0Rdvgmlc9cWIgkO_hAkIxNZRBHoVCKxxY.apk';
 
 function generateReferCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -65,8 +60,8 @@ export default function ReferScreen() {
   // ---------- চিঠির মতো আমন্ত্রণ বার্তা ----------
   const sendInvitationLetter = async () => {
     const letter =
-      `প্রিয় বন্ধু,\n\n`+
-      `আমি "আমার আয়" অ্যাপে আছি — এখানে গেম খেলে, ক্যাপচা পূরণ করে ` +
+      `প্রিয় বন্ধু,\n\n` +
+      `আমি "WinWay" অ্যাপে আছি — এখানে গেম খেলে, ক্যাপচা পূরণ করে ` +
       `আর ভিডিও দেখে সহজেই টাকা আয় করা যায়। তুমিও চাইলে আমার সাথে ` +
       `যোগ দিতে পারো!\n\n` +
       `👉 ডাউনলোড লিংক: ${APP_DOWNLOAD_LINK}\n` +

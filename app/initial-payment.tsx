@@ -26,7 +26,8 @@ const BKASH_MERCHANT = '01636257147';
 
 export default function InitialPaymentScreen() {
   const router = useRouter();
-  const { userData } = useContext(AuthContext) as any;
+  // ✅ updateUserData যোগ করা হলো — submit-এর পর সাথে সাথে status ফ্রেশ চেক করার জন্য
+  const { userData, updateUserData } = useContext(AuthContext) as any;
 
   const [user,         setUser]         = useState<any>(null);
   const [senderNumber, setSenderNumber] = useState('');
@@ -34,6 +35,7 @@ export default function InitialPaymentScreen() {
   const [loading,      setLoading]      = useState(false);
   const [copied,       setCopied]       = useState(false);
   const [submitted,    setSubmitted]    = useState(false);
+  const [checking,     setChecking]     = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -47,6 +49,19 @@ export default function InitialPaymentScreen() {
     };
     loadUser();
   }, [userData]);
+
+  // ✅✅✅ মূল ফিক্স ✅✅✅
+  // AuthContext ব্যাকগ্রাউন্ডে প্রতি ৮ সেকেন্ডে status চেক করে userData আপডেট করে।
+  // Admin approve করার সাথে সাথে userData.status === 'active' হয়ে গেলে
+  // এই useEffect তা ধরে ফেলে এবং ইউজারকে সাথে সাথে /home এ পাঠিয়ে দেয় —
+  // পেমেন্ট সাবমিট করার আগে বা "পাঠানো হয়েছে" (pending) স্ক্রিনে থাকা অবস্থায়,
+  // দুই ক্ষেত্রেই কাজ করবে, কারণ কম্পোনেন্টের একদম উপরে বসানো হয়েছে।
+  useEffect(() => {
+    if (userData?.status === 'active') {
+      Alert.alert('✅ একাউন্ট সক্রিয় হয়েছে!', 'স্বাগতম! আপনার একাউন্ট এখন সক্রিয়।');
+      router.replace('/home');
+    }
+  }, [userData?.status]);
 
   const copyNumber = async () => {
     try {
@@ -90,10 +105,27 @@ export default function InitialPaymentScreen() {
         packageTasks: PREMIUM.tasks,
       });
       setSubmitted(true);
+
+      // ✅ সাবমিটের পরপরই একবার status ফ্রেশ করে নেওয়া (৮ সেকেন্ড পোলিংয়ের জন্য অপেক্ষা না করে)
+      const userId = user._id || user.id;
+      if (userId) updateUserData(userId);
+
     } catch (error: any) {
       Alert.alert('Failed', error?.msg || error?.message || 'Server error.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ ম্যানুয়াল রিফ্রেশ — ইউজার নিজে থেকে সাথে সাথে status চেক করতে চাইলে
+  const handleManualCheck = async () => {
+    const userId = user?._id || user?.id;
+    if (!userId) return;
+    setChecking(true);
+    try {
+      await updateUserData(userId);
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -161,16 +193,25 @@ export default function InitialPaymentScreen() {
             </View>
 
             <Text style={styles.pendingNote}>
-              Approved within 24 hours. Refresh the app to check.
+              Approved within 24 hours. This page updates automatically — no need to reopen the app.
             </Text>
 
+            {/* ✅ আগে এই বাটন router.replace('/') করত এবং পুরনো login-time check-এর উপর নির্ভর করত।
+                এখন এটা সরাসরি status রিফ্রেশ করে — approve হয়ে থাকলে useEffect নিজেই /home এ পাঠাবে। */}
             <TouchableOpacity
               style={styles.refreshBtn}
-              onPress={() => router.replace('/')}
+              onPress={handleManualCheck}
               activeOpacity={0.85}
+              disabled={checking}
             >
-              <Ionicons name="refresh-outline" size={20} color="white" />
-              <Text style={styles.refreshBtnText}>Go Home / Refresh</Text>
+              {checking ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="refresh-outline" size={20} color="white" />
+                  <Text style={styles.refreshBtnText}>এখনই চেক করুন</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
