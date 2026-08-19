@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -114,10 +113,14 @@ export default function SignupScreen() {
     try {
       // ✅ email নেই — শুধু name, password, referralCode
       const response = await registerUser({
-  name:         name.trim(),
-  password,
-  referralCode: referralCode.toUpperCase().trim(),
-}) as any;
+        name:         name.trim(),
+        password,
+        referralCode: referralCode.toUpperCase().trim(),
+      }) as any;
+
+      // ❌ এখানে টোকেন এবং ইউজার ডেটা সেভ করা বন্ধ করা হলো 
+      // পেমেন্ট পেজে পেমেন্ট সম্পন্ন হলে তারপর সেভ করবেন।
+      /*
       if (response.token) {
         await AsyncStorage.setItem('userToken', response.token);
       }
@@ -129,6 +132,7 @@ export default function SignupScreen() {
           wallet: balance,
         }));
       }
+      */
 
       // ✅ FIX: string concatenation — Bengali template literal encoding সমস্যা নেই
       const loginCode = response.user?.referralCode || '';
@@ -146,7 +150,12 @@ export default function SignupScreen() {
           text: 'Payment Now',
           onPress: () => router.replace({
             pathname: '/initial-payment',
-            params:   { amount: MEMBERSHIP_PRICE },
+            params:   { 
+              amount: MEMBERSHIP_PRICE,
+              // টোকেন এবং ইউজার ডেটা পেমেন্ট পেজে প্যারামিটার হিসেবে পাঠিয়ে দিন
+              token: response.token,
+              userData: JSON.stringify(response.user)
+            },
           } as any),
         }]
       );

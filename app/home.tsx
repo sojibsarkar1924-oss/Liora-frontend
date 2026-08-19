@@ -1,20 +1,9 @@
-/**
- * app/home.tsx
- *
- * নতুন ফিক্স (এই ভার্সনে):
- * 3) প্রোফাইল অ্যাভাটার এখন ডাইনামিক — ইউজার নিজের ছবি আপলোড করলে
- *    সেটা দেখাবে, না করলে Ionicons "person" আইকন fallback দেখাবে
- *    (কোনো আলাদা PNG লাগে না এই অংশের জন্য)।
- *
- * আগের ফিক্সগুলো:
- * 1) formatMoney — locale-নির্ভর নয় এমন ম্যানুয়াল বাংলা সংখ্যা কনভার্টার
- * 2) getSafeBadge — userLevel ১-৫০ রেঞ্জে ক্ল্যাম্প করা
- */
-
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // যোগ করা হয়েছে
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
+  Alert,
   Image,
   Platform,
   SafeAreaView,
@@ -26,14 +15,8 @@ import {
 } from 'react-native';
 import { useBalance } from '../context/BalanceContext';
 
-// আপনার ডাইনামিক ব্যাজ এসেটস
 import badgeAssets from '../constants/badgeAssets';
 
-// প্রোফাইল অ্যাভাটারের জন্য আর কোনো PNG লাগবে না — ইউজার ছবি না দিলে
-// নিচে সরাসরি Ionicons "person" আইকন fallback হিসেবে দেখানো হয় (দেখুন render অংশে)।
-
-// বাকি আইকনগুলো — এগুলো অ্যাপের নিজস্ব ব্র্যান্ডিং, সব ইউজারের জন্য একই
-// (নিশ্চিত করুন এই ৮টা PNG assets/images/icons/ ফোল্ডারে আছে)
 const logoArrow = require('../assets/images/icons/logo-arrow.png');
 const iconMoneybag = require('../assets/images/icons/icon-moneybag.png');
 const iconWalletSmall = require('../assets/images/icons/icon-wallet-small.png');
@@ -43,7 +26,6 @@ const iconCaptcha = require('../assets/images/icons/icon-captcha.png');
 const iconVideo = require('../assets/images/icons/icon-video.png');
 const iconRefer = require('../assets/images/icons/icon-refer.png');
 
-// ---------- locale-নির্ভর নয় এমন বাংলা সংখ্যা কনভার্টার ----------
 const BENGALI_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
 
 function toBengaliDigits(input: string) {
@@ -51,15 +33,14 @@ function toBengaliDigits(input: string) {
 }
 
 function formatMoney(amount: number) {
-  const fixed = Number(amount).toFixed(2); // যেমন "1500.00"
+  const fixed = Number(amount).toFixed(2);
   const [intPart, decimalPart] = fixed.split('.');
-  const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ','); // "1,500"
-  const englishFormatted = `${withCommas}.${decimalPart}`; // "1,500.00"
-  const taka = '\u09F3'; // ৳ চিহ্ন
+  const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const englishFormatted = `${withCommas}.${decimalPart}`;
+  const taka = '\u09F3';
   return taka + ' ' + toBengaliDigits(englishFormatted);
 }
 
-// ---------- ব্যাজ ইনডেক্স নিরাপদ রেঞ্জে ক্ল্যাম্প করা ----------
 function getSafeBadge(level: number) {
   const clamped = Math.min(Math.max(Math.round(level), 1), 50);
   return badgeAssets[clamped];
@@ -125,22 +106,32 @@ function glowStyle(color: string) {
 }
 
 type HomeScreenProps = {
-  // ইউজারের আসল প্রোফাইল ছবির URL/URI — আপনার auth/user state থেকে আসবে।
-  // null/undefined হলে ডিফল্ট placeholder দেখাবে।
   userProfileImageUri?: string | null;
 };
 
 export default function HomeScreen({ userProfileImageUri = null }: HomeScreenProps) {
   const router = useRouter();
 
-  // এখানে userLevel = 1 রাখা হয়েছে (নতুন ইউজারের বাস্তবসম্মত ডিফল্ট)।
-  // পরে যখন ব্যাকএন্ড/ডাটাবেস থেকে আসল রেফার-সংখ্যা আনার সিস্টেম বসাবেন,
-  // userLevel = আপনার state/API থেকে আসা আসল মান দিয়ে replace করবেন।
   const userLevel = 1;
-  // আসল ব্যালেন্স এখন BalanceContext থেকে আসে — আর হার্ডকোড না
   const { balance: currentBalance, todaysEarning, totalEarning } = useBalance();
 
-  // ইউজার নিজের ছবি দিয়ে থাকলে Image দেখাবে, নাহলে নিচে person আইকন fallback (JSX অংশে)
+  // ✅ নতুন ফিক্স: লগআউট কনফার্মেশন
+  const handleLogoutAndSignup = async () => {
+    Alert.alert(
+      "নতুন অ্যাকাউন্ট",
+      "নতুন অ্যাকাউন্ট তৈরি করার জন্য আপনাকে বর্তমান অ্যাকাউন্ট থেকে লগআউট করতে হবে। আপনি কি রাজি?",
+      [
+        { text: "না", style: "cancel" },
+        { 
+          text: "হ্যাঁ, লগআউট করুন", 
+          onPress: async () => {
+            await AsyncStorage.clear();
+            router.replace('/signup');
+          } 
+        }
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -148,7 +139,6 @@ export default function HomeScreen({ userProfileImageUri = null }: HomeScreenPro
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- হেডার ---------- */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity style={styles.headerItem} onPress={() => router.push('/profile')}>
@@ -181,14 +171,12 @@ export default function HomeScreen({ userProfileImageUri = null }: HomeScreenPro
           </TouchableOpacity>
         </View>
 
-        {/* ---------- ব্যালেন্স কার্ড ---------- */}
         <View style={[styles.balanceCard, glowStyle('#00d2ff')]}>
           <Text style={styles.balanceAmount}>{formatMoney(currentBalance)}</Text>
           <Text style={styles.balanceLabel}>বর্তমান ব্যালেন্স</Text>
           <Image source={iconMoneybag} style={styles.balanceBagImage} resizeMode="contain" />
         </View>
 
-        {/* ---------- আজকের ও মোট উপার্জন ---------- */}
         <View style={styles.statsRow}>
           <View style={[styles.statBox, { borderColor: '#00d2ff' }, glowStyle('#00d2ff')]}>
             <Image source={iconWalletSmall} style={styles.statIcon} resizeMode="contain" />
@@ -209,10 +197,8 @@ export default function HomeScreen({ userProfileImageUri = null }: HomeScreenPro
           </View>
         </View>
 
-        {/* ---------- সেকশন টাইটেল ---------- */}
         <Text style={styles.sectionTitle}>টাকা আয় করার উপায়</Text>
 
-        {/* ---------- আয়ের অপশন লিস্ট ---------- */}
         {earnCards.map((card) => (
           <TouchableOpacity
             key={card.key}
@@ -232,7 +218,6 @@ export default function HomeScreen({ userProfileImageUri = null }: HomeScreenPro
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ---------- বটম ন্যাভিগেশন ---------- */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.push('/home')}>
           <Ionicons name="home" size={24} color="#00d2ff" />
@@ -244,7 +229,8 @@ export default function HomeScreen({ userProfileImageUri = null }: HomeScreenPro
           <Text style={styles.bottomNavLabel}>ওয়ালেট</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.bottomNavItem} onPress={() => router.push('/signup')}>
+        {/* ✅ এখানে ফিক্স করা ফাংশনটি বসানো হয়েছে */}
+        <TouchableOpacity style={styles.bottomNavItem} onPress={handleLogoutAndSignup}>
           <Ionicons name="person-add" size={24} color="#64748b" />
           <Text style={styles.bottomNavLabel}>নতুন অ্যাকাউন্ট</Text>
         </TouchableOpacity>

@@ -25,7 +25,7 @@ const REFERRAL_BONUS = 50;
 const LEVEL_UP_BONUS = 10;
 
 // ✅ আপনার কাজ করা আসল APK ডাউনলোড লিংক (ভবিষ্যতে Bitly বা Play Store লিংক হলে এখানে বসাবেন)
-const APP_DOWNLOAD_LINK = 'https://expo.dev/artifacts/eas/aYJSk40HeG0Rdvgmlc9cWIgkO_hAkIxNZRBHoVCKxxY.apk';
+const APP_DOWNLOAD_LINK = '';
 
 function generateReferCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -64,7 +64,6 @@ export default function ReferScreen() {
       `আমি "WinWay" অ্যাপে আছি — এখানে গেম খেলে, ক্যাপচা পূরণ করে ` +
       `আর ভিডিও দেখে সহজেই টাকা আয় করা যায়। তুমিও চাইলে আমার সাথে ` +
       `যোগ দিতে পারো!\n\n` +
-      `👉 ডাউনলোড লিংক: ${APP_DOWNLOAD_LINK}\n` +
       `👉 আমার রেফার কোড: ${referCode}\n\n` +
       `অ্যাপ ইনস্টল করার পর সাইনআপের সময় এই কোডটা বসিয়ে দিও — ` +
       `তাহলে আমরা দুজনেই বোনাস পাব।\n\n` +
