@@ -2,10 +2,11 @@
   "expo": {
     "name": "WinWay",
     "slug": "Liora",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "android": {
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
@@ -17,11 +18,10 @@
       "expo-router"
     ],
     "scheme": "winway",
-    "owner": "sojibsarkar",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "43f8ad5a-3c6f-4842-91db-564d1cba6a7d"
+        "projectId": "41df6944-edc3-480e-978c-b86fff013b6d"
       }
     }
   }
