@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
 
   // ✅ App চালু হলে (recent apps থেকে মুছে আবার খোলা হলেও) সবসময়
   // fresh state — আগের session clear করে দেওয়া হয়, প্রথম থেকে (লগইন
-  // স্ক্রিন থেকে) শুরু হয়। এখানে আর কোনো session persist/restore করা হচ্ছে না।
+  // স্ক্রিন থেকে) শুরু হয়।
   useEffect(() => {
     clearAndStart();
 
@@ -152,6 +152,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ✅✅✅ এই ফাংশনটাই "undefined is not a function" এররের সমাধান ✅✅✅
+  // signup-এর মতো জায়গায় যেখানে token/user data সার্ভার থেকে ইতিমধ্যেই
+  // পাওয়া গেছে, সেখানে নতুন করে সার্ভারে কল না করেই সরাসরি অ্যাপের
+  // ভেতরের login state সেট করার জন্য।
+  const setSession = (token, user) => {
+    setUserToken(token);
+    setUserData(syncBalance(user));
+  };
+
   const logout = async () => {
     try {
       stopPolling();
@@ -166,7 +175,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ login, logout, userToken, userData, isLoading, updateUserData }}
+      value={{ login, logout, userToken, userData, isLoading, updateUserData, setSession }}
     >
       {children}
     </AuthContext.Provider>
