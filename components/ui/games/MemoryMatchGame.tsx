@@ -7,7 +7,8 @@
  *  - প্রতি জোড়া মেলানো = ১ রাউন্ড সম্পন্ন
  *  - উপরে "রাউন্ড ১/৫", "রাউন্ড ২/৫" ... "রাউন্ড ৫/৫" দেখানো হয়
  *  - ৫টি জোড়া (৫ রাউন্ড) মিললেই গেম শেষ, ৳৫ রিওয়ার্ড একবারই দেওয়া হয়
- *    (বাকি ৩ জোড়া অপ্রয়োজনীয়, বোর্ড লক হয়ে যায়)
+ *  - কোনো "নতুন করে খেলুন" / রিসেট বাটন নেই — গেম একবারই খেলা যায়,
+ *    শেষ হলে বোর্ড লক হয়ে থাকে
  *
  * ব্যবহার:
  *   import MemoryMatchGame from '../../components/ui/games/MemoryMatchGame';
@@ -163,15 +164,6 @@ export default function MemoryMatchGame({
     }
   };
 
-  const resetGame = () => {
-    setCards(buildDeck());
-    setFlippedIndices([]);
-    setMoves(0);
-    setMatchedCount(0);
-    setIsLocked(false);
-    setGameFinished(false);
-  };
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>মেমরি ম্যাচ</Text>
@@ -202,10 +194,6 @@ export default function MemoryMatchGame({
           </TouchableOpacity>
         ))}
       </View>
-
-      <TouchableOpacity style={styles.resetButton} onPress={resetGame}>
-        <Text style={styles.resetButtonText}>নতুন করে খেলুন</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -260,17 +248,5 @@ const styles = StyleSheet.create({
   },
   cardText: {
     fontSize: CARD_SIZE * 0.45,
-  },
-  resetButton: {
-    marginTop: 24,
-    backgroundColor: '#00b894',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 15,
   },
 });

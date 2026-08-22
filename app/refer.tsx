@@ -1,16 +1,22 @@
 /**
  * app/refer.tsx
- * আপডেট:
- * 1) "আমার আয়" বদলে "WinWay" করা হয়েছে।
- * 2) অকার্যকর ডোমেইনের জায়গায় আসল APK ডাউনলোড লিংক বসানো হয়েছে।
+ *
+ * ✅ ফিক্স: আগে এই পেইজ নিজে থেকে একটা এলোমেলো কোড বানিয়ে ফোনে
+ * (AsyncStorage) সেভ করে রাখতো — তাই Profile পেইজের আসল রেফার কোডের
+ * সাথে কখনো মিলতো না। এখন এই পেইজ সরাসরি AuthContext-এর userData থেকে
+ * ব্যাকএন্ডের আসল referralCode ব্যবহার করে — Profile পেইজে যেটা
+ * "Referral Code (Login Code)" হিসেবে দেখায়, ঠিক সেটাই এখানে দেখাবে।
+ *
+ * এছাড়া "মোট রেফার করেছেন" সংখ্যাটাও এখন সত্যিকারের ব্যাকএন্ড ডেটা
+ * (getReferralInfo) থেকে আসে, আগের মতো সবসময় ০ দেখানো হয় না।
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   SafeAreaView,
   Share,
@@ -19,51 +25,71 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AuthContext } from '../context/AuthContext';
+import { getReferralInfo } from '../services/api';
 
-const REFER_CODE_KEY = 'liora_refer_code_v1';
 const REFERRAL_BONUS = 50;
 const LEVEL_UP_BONUS = 10;
 
-// ✅ আপনার কাজ করা আসল APK ডাউনলোড লিংক (ভবিষ্যতে Bitly বা Play Store লিংক হলে এখানে বসাবেন)
-const APP_DOWNLOAD_LINK = '';
-
-function generateReferCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 7; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
+// পরে Play Store এ পাবলিশ হলে আসল লিংক বসাবেন
+const APP_DOWNLOAD_LINK = 'https://liora.app/download';
 
 export default function ReferScreen() {
   const router = useRouter();
-  const [referCode, setReferCode] = useState('');
-  const [referralCount] = useState(0);
+  const { userData } = useContext(AuthContext) as any;
+
+  // ✅ আসল রেফার কোড — ব্যাকএন্ড থেকে আসা userData.referralCode,
+  // Profile পেইজে যেটা দেখানো হয় ঠিক সেটাই
+  const referCode = userData?.referralCode || '';
+
+  const [referralCount, setReferralCount] = useState(0);
+  const [loadingCount,  setLoadingCount]  = useState(true);
 
   useEffect(() => {
-    (async () => {
-      let code = await AsyncStorage.getItem(REFER_CODE_KEY);
-      if (!code) {
-        code = generateReferCode();
-        await AsyncStorage.setItem(REFER_CODE_KEY, code);
+    const loadReferralInfo = async () => {
+      const userId = userData?._id || userData?.id;
+      if (!userId) { setLoadingCount(false); return; }
+
+      try {
+        const info: any = await getReferralInfo(userId);
+        // ব্যাকএন্ড রেসপন্স কোন ফরম্যাটে count পাঠায় তা নিশ্চিত না থাকায়
+        // কয়েকটা সম্ভাব্য ফিল্ড-নাম পরীক্ষা করা হচ্ছে
+        const count =
+          info?.totalReferrals ??
+          info?.referralCount ??
+          info?.count ??
+          (Array.isArray(info?.referrals) ? info.referrals.length : undefined) ??
+          (Array.isArray(info?.data) ? info.data.length : undefined) ??
+          0;
+        setReferralCount(Number(count) || 0);
+      } catch (e) {
+        console.log('getReferralInfo error:', e);
+      } finally {
+        setLoadingCount(false);
       }
-      setReferCode(code);
-    })();
-  }, []);
+    };
+    loadReferralInfo();
+  }, [userData?._id, userData?.id]);
 
   const copyCode = async () => {
+    if (!referCode) return;
     await Clipboard.setStringAsync(referCode);
     Alert.alert('কপি হয়েছে! ✅', referCode);
   };
 
   // ---------- চিঠির মতো আমন্ত্রণ বার্তা ----------
   const sendInvitationLetter = async () => {
+    if (!referCode) {
+      Alert.alert('ত্রুটি', 'রেফার কোড পাওয়া যায়নি। আবার চেষ্টা করুন।');
+      return;
+    }
+
     const letter =
-      `প্রিয় বন্ধু,\n\n` +
+      `প্রিয় বন্ধু,\n\n`+
       `আমি "WinWay" অ্যাপে আছি — এখানে গেম খেলে, ক্যাপচা পূরণ করে ` +
       `আর ভিডিও দেখে সহজেই টাকা আয় করা যায়। তুমিও চাইলে আমার সাথে ` +
       `যোগ দিতে পারো!\n\n` +
+      `👉 ডাউনলোড লিংক: ${APP_DOWNLOAD_LINK}\n` +
       `👉 আমার রেফার কোড: ${referCode}\n\n` +
       `অ্যাপ ইনস্টল করার পর সাইনআপের সময় এই কোডটা বসিয়ে দিও — ` +
       `তাহলে আমরা দুজনেই বোনাস পাব।\n\n` +
@@ -107,9 +133,13 @@ export default function ReferScreen() {
 
         <View style={styles.statBox}>
           <Ionicons name="people-outline" size={22} color="#c026d3" />
-          <Text style={styles.statText}>
-            মোট রেফার করেছেন: <Text style={styles.statNumber}>{referralCount}</Text> জন
-          </Text>
+          {loadingCount ? (
+            <ActivityIndicator size="small" color="#c026d3" />
+          ) : (
+            <Text style={styles.statText}>
+              মোট রেফার করেছেন: <Text style={styles.statNumber}>{referralCount}</Text> জন
+            </Text>
+          )}
         </View>
 
         {/* ---------- চিঠির মতো আমন্ত্রণ পাঠানোর বাটন ---------- */}

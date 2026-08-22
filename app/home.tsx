@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // যোগ করা হয়েছে
+import AsyncStorage from '@react-native-async-storage/async-storage'; // যোগ করা হয়েছে
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   Alert,
   Image,
@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AuthContext } from '../context/AuthContext';
 import { useBalance } from '../context/BalanceContext';
 
 import badgeAssets from '../constants/badgeAssets';
@@ -112,7 +113,12 @@ type HomeScreenProps = {
 export default function HomeScreen({ userProfileImageUri = null }: HomeScreenProps) {
   const router = useRouter();
 
-  const userLevel = 1;
+  // ✅ ফিক্স: হার্ডকোড করা userLevel = 1 এর বদলে এখন AuthContext-এর
+  // userData.level থেকে আসল লেভেল নেওয়া হচ্ছে (backend থেকে আসা মান)।
+  // userData না থাকলে বা level ফিল্ড না থাকলে ডিফল্ট হিসেবে ১ থাকবে।
+  const { userData } = useContext(AuthContext) as any;
+  const userLevel = userData?.level || 1;
+
   const { balance: currentBalance, todaysEarning, totalEarning } = useBalance();
 
   // ✅ নতুন ফিক্স: লগআউট কনফার্মেশন
@@ -229,7 +235,7 @@ export default function HomeScreen({ userProfileImageUri = null }: HomeScreenPro
           <Text style={styles.bottomNavLabel}>ওয়ালেট</Text>
         </TouchableOpacity>
 
-        {/* ✅ এখানে ফিক্স করা ফাংশনটি বসানো হয়েছে */}
+        {/* ✅ এখানে ফিক্স করা ফাংশনটি বসানো হয়েছে */}
         <TouchableOpacity style={styles.bottomNavItem} onPress={handleLogoutAndSignup}>
           <Ionicons name="person-add" size={24} color="#64748b" />
           <Text style={styles.bottomNavLabel}>নতুন অ্যাকাউন্ট</Text>
