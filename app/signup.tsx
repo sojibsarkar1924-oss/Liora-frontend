@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AuthContext } from '../context/AuthContext';
 import { registerUser } from '../services/api';
 
 const MEMBERSHIP_PRICE = 400;
@@ -80,6 +82,8 @@ const InputField = ({
 
 export default function SignupScreen() {
   const router = useRouter();
+  // ✅ setSession — signup এর পরপরই AuthContext-এর ভেতরের login state সেট করার জন্য
+  const { setSession } = useContext(AuthContext) as any;
 
   const [name,         setName]         = useState('');
   const [password,     setPassword]     = useState('');
@@ -118,9 +122,19 @@ export default function SignupScreen() {
         referralCode: referralCode.toUpperCase().trim(),
       }) as any;
 
-      // ❌ এখানে টোকেন এবং ইউজার ডেটা সেভ করা বন্ধ করা হলো 
-      // পেমেন্ট পেজে পেমেন্ট সম্পন্ন হলে তারপর সেভ করবেন।
-      /*
+      // ✅✅✅ মূল ফিক্স ✅✅✅
+      // আগে এখানে token/userData সেভ করাই হতো না (কমেন্ট করা ছিল), বদলে
+      // token ও userData navigation params দিয়ে /initial-payment এ পাঠানো
+      // হতো। কিন্তু initial-payment.tsx সেই params পড়ে না — ও শুধু
+      // AuthContext আর AsyncStorage চেক করে। ফলে সেখানে user কখনো সেট
+      // হতো না, আর Submit চাপলেই "You are not logged in" আসতো।
+      //
+      // এখন এখানেই সঠিকভাবে AsyncStorage-এ সেভ করা হচ্ছে এবং
+      // AuthContext-এর setSession() কল করা হচ্ছে। এতে:
+      //   ১) initial-payment.tsx সাথে সাথেই user পেয়ে যাবে (context থেকে)
+      //   ২) app/_layout.tsx-এর RouteGuard status === 'pending' দেখে
+      //      নিজে থেকেই /initial-payment এ পাঠিয়ে দেবে — তাই এখানে
+      //      ম্যানুয়াল router.replace() করারও দরকার নেই।
       if (response.token) {
         await AsyncStorage.setItem('userToken', response.token);
       }
@@ -132,7 +146,9 @@ export default function SignupScreen() {
           wallet: balance,
         }));
       }
-      */
+      if (response.token && response.user) {
+        setSession(response.token, response.user);
+      }
 
       // ✅ FIX: string concatenation — Bengali template literal encoding সমস্যা নেই
       const loginCode = response.user?.referralCode || '';
@@ -146,18 +162,7 @@ export default function SignupScreen() {
       Alert.alert(
         'Registration Successful!',
         alertMsg,
-        [{
-          text: 'Payment Now',
-          onPress: () => router.replace({
-            pathname: '/initial-payment',
-            params:   { 
-              amount: MEMBERSHIP_PRICE,
-              // টোকেন এবং ইউজার ডেটা পেমেন্ট পেজে প্যারামিটার হিসেবে পাঠিয়ে দিন
-              token: response.token,
-              userData: JSON.stringify(response.user)
-            },
-          } as any),
-        }]
+        [{ text: 'ঠিক আছে' }] // ✅ ম্যানুয়াল নেভিগেশন নেই — RouteGuard নিজেই নিয়ে যাবে
       );
 
     } catch (error: any) {
@@ -224,11 +229,11 @@ export default function SignupScreen() {
                 <Text style={styles.bonusTitle}>Bonus System</Text>
                 <View style={styles.bonusRow}>
                   <Ionicons name="person" size={14} color={Colors.green} />
-                  <Text style={styles.bonusText}>Direct referral bonus: 60 taka</Text>
+                  <Text style={styles.bonusText}>Direct referral bonus: 50 taka</Text>
                 </View>
                 <View style={styles.bonusRow}>
                   <Ionicons name="people" size={14} color={Colors.blue} />
-                  <Text style={styles.bonusText}>Top 6 seniors get 10 taka each</Text>
+                  <Text style={styles.bonusText}>Top 5 seniors get 10 taka each</Text>
                 </View>
               </View>
 
