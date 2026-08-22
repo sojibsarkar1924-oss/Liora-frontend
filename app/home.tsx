@@ -119,7 +119,18 @@ export default function HomeScreen({ userProfileImageUri = null }: HomeScreenPro
   const { userData } = useContext(AuthContext) as any;
   const userLevel = userData?.level || 1;
 
-  const { balance: currentBalance, todaysEarning, totalEarning } = useBalance();
+  // ✅✅✅ ফিক্স: দুই সোর্সের ব্যালেন্স একসাথে দেখানো ✅✅✅
+  // BalanceContext (local, AsyncStorage) শুধু গেম/ক্যাপচা/ভিডিও থেকে আয় রাখে।
+  // userData (AuthContext, backend থেকে আসা) রেফার বোনাস, লেভেল বোনাস,
+  // টিম বোনাস রাখে — Profile পেইজ এটাই দেখায়। এই দুইটা backend-এ সংযুক্ত
+  // না থাকায় আলাদা আলাদা জায়গায় জমা হচ্ছিল। এখন Home পেইজে দুটো যোগ করে
+  // দেখানো হচ্ছে, যাতে গেমের আয়ও দেখা যায়, রেফার বোনাসও দেখা যায় —
+  // কোনোটাই হারিয়ে না যায়।
+  const { balance: localBalance, todaysEarning, totalEarning: localTotalEarning } = useBalance();
+  const backendBalance       = Number(userData?.balance || 0);
+  const backendTotalEarnings = Number(userData?.totalEarnings || 0);
+  const currentBalance = backendBalance + localBalance;
+  const totalEarning   = backendTotalEarnings + localTotalEarning;
 
   // ✅ নতুন ফিক্স: লগআউট কনফার্মেশন
   const handleLogoutAndSignup = async () => {
